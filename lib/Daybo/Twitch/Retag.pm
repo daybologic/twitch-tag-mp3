@@ -23,8 +23,8 @@ use Moose;
 use MP3::Tag;
 #----------------------------------------------------------------------------
 sub run {
+	my ($self, $dirname) = @_;
 	my $filename;
-	my $dirname = $_[0];
 	local *dirHandle;
 
 	if (!opendir(dirHandle, $dirname)) {
@@ -36,7 +36,7 @@ sub run {
 		next if ($filename eq '.' || $filename eq '..');
 		if (-d ($dirname . '/' . $filename)) {
 			print "chdir $dirname/$filename\n";
-			Program($dirname . '/' . $filename);
+			$self->run($dirname . '/' . $filename);
 		} else {
 			if (open(FILEHANDLE, '<' . $dirname . '/' . $filename)) {
 				my $ext;

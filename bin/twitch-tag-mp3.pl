@@ -9,7 +9,7 @@ use Daybo::Twitch::Retag;
 
 sub main {
 	my $retagger = Daybo::Twitch::Retag->new();
-	return $retagger->run();
+	return $retagger->run('.');
 }
 
 
