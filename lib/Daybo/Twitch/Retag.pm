@@ -64,7 +64,6 @@ sub run {
 						GetAlbum($dirname),
 						GetTrack($filename)
 					);
-					print "\n";
 				}
 			}
 		}
