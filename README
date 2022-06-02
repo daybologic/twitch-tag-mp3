@@ -1,3 +1,5 @@
 The following dependencies are required on Debian:
 
 libmp3-tag-perl
+libmoose-perl
+libsys-cpu-perl
