@@ -45,16 +45,14 @@ sub run {
 				close(FILEHANDLE);
 
 				if (IsMp3($ext)) {
-					if (CountPath($dirname) == 3) {
-						print "Tagging $dirname/$filename\n";
-						Tag(
-							"$dirname/$filename",
-							GetArtist($dirname),
-							GetAlbum($dirname),
-							GetTrack($filename)
-						);
-						print "\n";
-					}
+					print "Tagging $dirname/$filename\n";
+					Tag(
+						"$dirname/$filename",
+						GetArtist($dirname),
+						GetAlbum($dirname),
+						GetTrack($filename)
+					);
+					print "\n";
 				}
 			}
 		}
@@ -87,19 +85,6 @@ sub GetExt {
 	return $ext;
 }
 #----------------------------------------------------------------------------
-sub CountPath {
-	my $pathstr = $_[0];
-	my @comps;
-	my $count = 0;
-
-	@comps = split('/', $pathstr);
-	foreach ( @comps ) {
-		$count++;
-	}
-
-	return $count;
-}
-#----------------------------------------------------------------------------
 sub Tag {
 	my $file = $_[0];
 	my $artist = $_[1];
@@ -109,8 +94,8 @@ sub Tag {
 
 	$mp3 = MP3::Tag->new($file);
 	$mp3->get_tags();
-	$mp3->{ID3v1}->remove_tag() if ( exists $mp3->{ID3v1} );
-	$mp3->{ID3v2}->remove_tag() if ( exists $mp3->{ID3v2} );
+	$mp3->{ID3v1}->remove_tag() if (exists $mp3->{ID3v1});
+	$mp3->{ID3v2}->remove_tag() if (exists $mp3->{ID3v2});
 	$mp3->new_tag("ID3v1");
 	$mp3->new_tag("ID3v2");
 	$mp3->{ID3v1}->all(
@@ -136,10 +121,10 @@ sub Tag {
 	);
 
 	if ( !$mp3->{ID3v1}->write_tag() ) {
-		#print "Error tagging $filename (ID3v1): $!";
+		print "Error tagging $file (ID3v1): $!";
 	}
 	if ( !$mp3->{ID3v2}->write_tag() ) {
-		#print "Error tagging $filename (ID3v2): $!";
+		print "Error tagging $file (ID3v2): $!";
 	}
 }
 #----------------------------------------------------------------------------
