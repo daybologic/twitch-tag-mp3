@@ -64,6 +64,12 @@ sub run {
 	return 0;
 }
 #----------------------------------------------------------------------------
+sub usage {
+	print("twitch-tag-mp3.pl <base_dir>\n\n");
+	print("See README for more information, or https://hg.sr.ht/~m6kvm/twitch-tag-mp3\n");
+	return 1;
+}
+#----------------------------------------------------------------------------
 sub IsMp3 {
 	my $ext = $_[0];
 	return 1 if (lc($ext) eq 'mp3');

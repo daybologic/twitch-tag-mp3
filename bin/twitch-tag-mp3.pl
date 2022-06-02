@@ -9,7 +9,9 @@ use Daybo::Twitch::Retag;
 
 sub main {
 	my $retagger = Daybo::Twitch::Retag->new();
-	return $retagger->run('.');
+	my $startDir = $ARGV[0];
+	return $retagger->usage() if (!defined($startDir));
+	return $retagger->run($startDir);
 }
 
 
