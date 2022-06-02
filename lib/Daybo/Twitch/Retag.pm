@@ -34,7 +34,7 @@ package Daybo::Twitch::Retag;
 use Moose;
 use MP3::Tag;
 
-our $VERSION = '0.0.1';
+our $VERSION = '0.0.3';
 #----------------------------------------------------------------------------
 sub run {
 	my ($self, $dirname) = @_;
