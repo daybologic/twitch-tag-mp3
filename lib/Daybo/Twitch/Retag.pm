@@ -65,10 +65,7 @@ sub run {
 					print "Tagging $relPath\n";
 					Tag(
 						"$dirname/$filename",
-						GetArtist($dirname),
-						GetAlbum($dirname),
-						GetTrack($filename),
-						2022,
+						parseFileName($filename),
 					);
 				}
 			}
@@ -145,26 +142,14 @@ sub Tag {
 	return;
 }
 #----------------------------------------------------------------------------
-sub GetArtist($)
-{
-	$_ = $_[0];
-	s:^\./::;
-	s/\/.*$//;
-	return $_;
-}
-#----------------------------------------------------------------------------
-sub GetAlbum($)
-{
-	$_ = $_[0];
-	s/^.*\///;
-	return $_;
-}
-#----------------------------------------------------------------------------
-sub GetTrack($)
-{
-	$_ = $_[0];
-	s/.mp3$//;
-	return $_;
+sub parseFileName {
+	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
+	my ($filename) = @_;
+	if ($filename =~ m/^(\w+)\s\(\w+\)\s(\d{4})-\d{2}-\d{2}\s\d{2}_\d{2}-(\d+)\.mp3$/) {
+		return ($1, 'Twitch', $3, $2);
+	}
+
+	die("Cannot parse filename structure: '$filename'");
 }
 #----------------------------------------------------------------------------
 sub acceptableDirName {
