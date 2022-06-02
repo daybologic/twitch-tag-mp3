@@ -138,6 +138,8 @@ sub Tag {
 	if ( !$mp3->{ID3v2}->write_tag() ) {
 		print "Error tagging $file (ID3v2): $!";
 	}
+
+	return;
 }
 #----------------------------------------------------------------------------
 sub GetArtist($)
