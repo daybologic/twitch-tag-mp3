@@ -48,18 +48,19 @@ sub run {
 
 	while ($filename = readdir(dirHandle)) {
 		next if ($filename eq '.' || $filename eq '..');
-		if (-d ($dirname . '/' . $filename)) {
-			print "chdir $dirname/$filename\n";
-			$self->run($dirname . '/' . $filename);
+		my $relPath = $dirname . '/' . $filename;
+		if (-d $relPath) {
+			print "chdir $relPath\n";
+			$self->run($relPath);
 		} else {
-			if (open(FILEHANDLE, '<' . $dirname . '/' . $filename)) {
+			if (open(FILEHANDLE, '<' . $relPath)) {
 				my $ext;
 
 				$ext = GetExt($filename);
 				close(FILEHANDLE);
 
 				if (IsMp3($ext)) {
-					print "Tagging $dirname/$filename\n";
+					print "Tagging $relPath\n";
 					Tag(
 						"$dirname/$filename",
 						GetArtist($dirname),
