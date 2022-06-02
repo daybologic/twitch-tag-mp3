@@ -50,8 +50,10 @@ sub run {
 		next if ($filename eq '.' || $filename eq '..');
 		my $relPath = $dirname . '/' . $filename;
 		if (-d $relPath) {
-			print "chdir $relPath\n";
-			$self->run($relPath);
+			if (acceptableDirName($filename)) {
+				print "chdir $relPath\n";
+				$self->run($relPath);
+			}
 		} else {
 			if (open(FILEHANDLE, '<' . $relPath)) {
 				my $ext;
@@ -163,6 +165,12 @@ sub GetTrack($)
 	$_ = $_[0];
 	s/.mp3$//;
 	return $_;
+}
+#----------------------------------------------------------------------------
+sub acceptableDirName {
+	my ($dirName) = @_;
+	return 0 if ($dirName eq '@eaDir');
+	return 1;
 }
 #----------------------------------------------------------------------------
 1;
