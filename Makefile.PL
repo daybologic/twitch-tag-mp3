@@ -41,7 +41,21 @@ eval {
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-	NAME => 'Daybo::Twitch::Retag',
+	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with YouTube-DL',
+	AUTHOR       => 'Duncan Ross Palmer, M6KVM (palmer@overchat.org)',
+
+	EXE_FILES    => [glob q('bin/*')],
+	NAME         => 'Daybo::Twitch::Retag',
+
+        PREREQ_PM => {
+                'Moose'    => 0,
+		'MP3::Tag' => 0,
+	}, BUILD_REQUIRES => {
+		'Sys::CPU' => 0,
+		#'Moose'           => 0,
+		#'Test::More'      => 0,
+	},
+
 	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
 );
 
