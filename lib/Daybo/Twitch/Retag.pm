@@ -147,9 +147,28 @@ sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s(\d{4})-\d{2}-\d{2}.*/) {
-		my ($artist, $album, $track, $year) = ($1, 'Twitch', undef, $2);
+		my ($artist, $album, $track, $year) = ($1, undef, undef, $2);
+
 		$track = $filename;
 		$track =~ s/\.mp3$//;
+		$track =~ s/-trim//;
+		$track =~ s/-tempo//;
+		$track =~ s/-untempo//;
+
+		$artist =~ s/Official//gi;
+		$artist =~ s/Music//gi;
+		$artist = 'Raymond Doyle' if ($artist eq 'CarteBlanche88');
+		$artist = 'Taucher' if (lc($artist) eq 'taucher66');
+		$artist = 'Kristina Sky' if ($artist eq 'TheRealKristinaSky');
+		$artist = 'Edit' if ($artist eq 'The_Real_DJ_Edit' || $artist eq 'TheReal_DJEdit');
+		$artist = 'Vlastimil' if ($artist eq 'VlastimilVibes');
+		$artist =~ s/dj//i;
+		$artist =~ s/_/ /g;
+		$artist =~ s/\s*$//;
+		$artist =~ s/^\s*//;
+
+		$album = "${artist} on Twitch";
+
 		return ($artist, $album, $track, $year);
 	}
 
