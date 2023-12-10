@@ -1,7 +1,7 @@
 Source: twitch-tag-mp3
 Section: sound
 Priority: optional
-Maintainer: Duncan Ross Palmer <2e0eol@gmail.com>
+Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper (>= 13)
 Build-Depends-Indep: libsys-cpu-perl
 Standards-Version: 4.5.1
