@@ -1,5 +1,4 @@
-#!/usr/bin/env perl
-
+#!/usr/bin/perl
 # Twitch MP3 tagger.
 # Copyright (c) 2023, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
