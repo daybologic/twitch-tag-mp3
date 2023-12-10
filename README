@@ -1,5 +1,5 @@
-The following dependencies are required on Debian:
+Usage:
 
-libmp3-tag-perl
-libmoose-perl
-libsys-cpu-perl
+	twitch-tag-mp3 <DIR>
+
+Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
