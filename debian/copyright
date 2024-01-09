@@ -2,8 +2,8 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: https://github.com/daybologic/twitch-tag-mp3
 Upstream-Name: twitch-tag-mp3
 Upstream-Contact: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
-Copyright: 2023 Duncan Ross Palmer <2e0eol@gmail.com>
-   2023 Duncan Ross Palmer <2e0eol@gmail.com>
+Copyright: 2023,2024 Duncan Ross Palmer <2e0eol@gmail.com>
+   2023,2024 Duncan Ross Palmer <2e0eol@gmail.com>
 License: BSD
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
