@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # Twitch MP3 tagger.
-# Copyright (c) 2023, Rev. Duncan Ross Palmer (2E0EOL)
+# Copyright (c) 2023,2024, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
