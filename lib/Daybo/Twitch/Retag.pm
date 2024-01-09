@@ -34,7 +34,7 @@ use Moose;
 use MP3::Tag;
 
 our $VERSION = '0.2.0';
-our $URL = 'https://hg.sr.ht/~m6kvm/twitch-tag-mp3';
+our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 #----------------------------------------------------------------------------
 sub run {
 	my ($self, $dirname) = @_;
