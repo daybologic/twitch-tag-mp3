@@ -53,5 +53,4 @@ sub main {
 	return $retagger->run($startDir);
 }
 
-
 exit(main()) unless (caller());

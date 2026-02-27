@@ -36,8 +36,9 @@ use Moose;
 
 our $VERSION = '0.2.0';
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
+
 my @pids;
-#----------------------------------------------------------------------------
+
 sub run {
 	my ($self, $dirname) = @_;
 	my $filename;
@@ -82,19 +83,19 @@ sub run {
 
 	return 0;
 }
-#----------------------------------------------------------------------------
+
 sub usage {
 	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
 	print("twitch-tag-mp3.pl <base_dir>\n\n");
 	print("See README for more information, or $URL\n");
 	return 1;
 }
-#----------------------------------------------------------------------------
+
 sub IsMp3 {
 	my $ext = $_[0];
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
-#----------------------------------------------------------------------------
+
 sub GetExt {
 	my $fn = $_[0];
 	my @arr;
@@ -105,7 +106,7 @@ sub GetExt {
 	return undef if ($fn eq $ext);
 	return $ext;
 }
-#----------------------------------------------------------------------------
+
 sub Tag {
 	my ($file, $artist, $album, $track, $year) = @_;
 
@@ -120,7 +121,7 @@ sub Tag {
 		exit(0);
 	}
 }
-#----------------------------------------------------------------------------
+
 sub TagPerProcess {
 	my ($file, $artist, $album, $track, $year) = @_;
 
@@ -162,7 +163,7 @@ sub TagPerProcess {
 
 	return;
 }
-#----------------------------------------------------------------------------
+
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
@@ -194,11 +195,11 @@ sub parseFileName {
 
 	die("Cannot parse filename structure: '$filename'");
 }
-#----------------------------------------------------------------------------
+
 sub acceptableDirName {
 	my ($dirName) = @_;
 	return 0 if ($dirName eq '@eaDir');
 	return 1;
 }
-#----------------------------------------------------------------------------
+
 1;
