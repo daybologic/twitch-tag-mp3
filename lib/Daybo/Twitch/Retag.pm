@@ -30,11 +30,13 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 package Daybo::Twitch::Retag;
-use Moose;
+use English qw(-no_match_vars);
 use MP3::Tag;
+use Moose;
 
 our $VERSION = '0.2.0';
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
+my @pids;
 #----------------------------------------------------------------------------
 sub run {
 	my ($self, $dirname) = @_;
@@ -73,6 +75,11 @@ sub run {
 	}
 
 	closedir(dirHandle);
+
+	foreach my $pid (@pids) {
+		waitpid($pid, 0);
+	}
+
 	return 0;
 }
 #----------------------------------------------------------------------------
@@ -85,8 +92,7 @@ sub usage {
 #----------------------------------------------------------------------------
 sub IsMp3 {
 	my $ext = $_[0];
-	return 1 if (lc($ext) eq 'mp3');
-	return 0;
+	return (defined($ext) && lc($ext) eq 'mp3');
 }
 #----------------------------------------------------------------------------
 sub GetExt {
@@ -101,6 +107,21 @@ sub GetExt {
 }
 #----------------------------------------------------------------------------
 sub Tag {
+	my ($file, $artist, $album, $track, $year) = @_;
+
+	my $pid = fork();
+	die("Cannot fork! $ERRNO") unless (defined($pid));
+
+	if ($pid) { # parent
+		push(@pids, $pid);
+	} else { # child
+		$0 = sprintf("tagging '%s'", $file);
+		TagPerProcess($file, $artist, $album, $track, $year);
+		exit(0);
+	}
+}
+#----------------------------------------------------------------------------
+sub TagPerProcess {
 	my ($file, $artist, $album, $track, $year) = @_;
 
 	my $mp3 = MP3::Tag->new($file);
