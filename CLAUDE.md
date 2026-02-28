@@ -32,6 +32,15 @@ dpkg-buildpackage -b
 - `parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track (filename sans `.mp3`/suffixes), and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
 - `acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
 
+## Coding Style
+
+All `sub` definitions must use cuddled braces — opening brace on the same line as `sub`:
+
+```perl
+sub foo {   # correct
+sub foo{    # wrong
+```
+
 ## Code Quality Rules
 
 A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-config.yaml`) rejects commits if `lib/` contains:
