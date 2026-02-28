@@ -19,6 +19,7 @@ All changes must be minimal, targeted, and verifiable via git diff.
    - Any annotations or commentary inside source files.
 3. Only write raw source code content when modifying files.
 4. Prefer surgical edits over full rewrites.
+5. Only use Developer.shell for modifications.
 
 ---
 
@@ -61,6 +62,7 @@ If unrelated formatting changes appear, abort and revert.
 - Never copy display-format output back into source files.
 - Never introduce formatting that was not explicitly requested.
 - Never add or remove whitespace except where required by the change.
+- You are not allowed to use Developer.textEditor under any circumstances.
 
 ---
 
