@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: trap-goose-corruption
+        name: Block line-number/markdown corruption in lib/
+        entry: maint/trap-goose-corruption.sh
+        language: system
+        pass_filenames: false
