@@ -37,6 +37,8 @@ use Moose;
 our $VERSION = '0.2.0';
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 
+has 'jobs' => (is => 'ro', isa => 'Int', default => 1);
+
 my @pids;
 
 sub run {
@@ -66,7 +68,7 @@ sub run {
 
 				if (isMp3($ext)) {
 					print "Tagging $relPath\n";
-					tag(
+					$self->tag(
 						$relPath,
 						parseFileName($filename),
 					);
@@ -108,7 +110,12 @@ sub getExt {
 }
 
 sub tag {
-	my ($file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $artist, $album, $track, $year) = @_;
+
+	if (scalar(@pids) >= $self->jobs) {
+		my $done = waitpid(-1, 0);
+		@pids = grep { $_ != $done } @pids;
+	}
 
 	my $pid = fork();
 	die("Cannot fork! $ERRNO") unless (defined($pid));
