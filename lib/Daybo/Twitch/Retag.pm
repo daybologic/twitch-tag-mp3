@@ -198,8 +198,7 @@ sub parseFileName {
 
 sub acceptableDirName {
 	my ($dirName) = @_;
-	return 0 if ($dirName eq '@eaDir');
-	return 1;
+	return ($dirName ne '@eaDir');
 }
 
 1;
