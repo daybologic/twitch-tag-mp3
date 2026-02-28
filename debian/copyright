@@ -3,7 +3,6 @@ Source: https://github.com/daybologic/twitch-tag-mp3
 Upstream-Name: twitch-tag-mp3
 Upstream-Contact: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Copyright: 2023-2026 Duncan Ross Palmer <2e0eol@gmail.com>
-   2023-2026 Duncan Ross Palmer <2e0eol@gmail.com>
 License: BSD
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -30,7 +29,4 @@ License: BSD
   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-  SUCH DAMAGE.o
-Comment:
- On Debian systems, the full text of the BSD License
- can be found in the file '/usr/share/common-licenses/BSD'.
+  SUCH DAMAGE.
