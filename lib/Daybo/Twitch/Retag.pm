@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # Twitch MP3 tagger.
-# Copyright (c) 2023,2024, Rev. Duncan Ross Palmer (2E0EOL)
+# Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,9 @@ use Moose;
 
 our $VERSION = '0.2.0';
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
+
 my @pids;
-#----------------------------------------------------------------------------
+
 sub run {
 	my ($self, $dirname) = @_;
 	my $filename;
@@ -60,12 +61,12 @@ sub run {
 			if (open(FILEHANDLE, '<' . $relPath)) {
 				my $ext;
 
-				$ext = GetExt($filename);
+				$ext = getExt($filename);
 				close(FILEHANDLE);
 
-				if (IsMp3($ext)) {
+				if (isMp3($ext)) {
 					print "Tagging $relPath\n";
-					Tag(
+					tag(
 						$relPath,
 						parseFileName($filename),
 					);
@@ -82,20 +83,20 @@ sub run {
 
 	return 0;
 }
-#----------------------------------------------------------------------------
+
 sub usage {
 	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
 	print("twitch-tag-mp3.pl <base_dir>\n\n");
 	print("See README for more information, or $URL\n");
 	return 1;
 }
-#----------------------------------------------------------------------------
-sub IsMp3 {
+
+sub isMp3 {
 	my $ext = $_[0];
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
-#----------------------------------------------------------------------------
-sub GetExt {
+
+sub getExt {
 	my $fn = $_[0];
 	my @arr;
 	my $ext;
@@ -105,8 +106,8 @@ sub GetExt {
 	return undef if ($fn eq $ext);
 	return $ext;
 }
-#----------------------------------------------------------------------------
-sub Tag {
+
+sub tag {
 	my ($file, $artist, $album, $track, $year) = @_;
 
 	my $pid = fork();
@@ -116,12 +117,12 @@ sub Tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		TagPerProcess($file, $artist, $album, $track, $year);
+		tagPerProcess($file, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
-#----------------------------------------------------------------------------
-sub TagPerProcess {
+
+sub tagPerProcess {
 	my ($file, $artist, $album, $track, $year) = @_;
 
 	my $mp3 = MP3::Tag->new($file);
@@ -162,7 +163,7 @@ sub TagPerProcess {
 
 	return;
 }
-#----------------------------------------------------------------------------
+
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
@@ -194,11 +195,10 @@ sub parseFileName {
 
 	die("Cannot parse filename structure: '$filename'");
 }
-#----------------------------------------------------------------------------
+
 sub acceptableDirName {
 	my ($dirName) = @_;
-	return 0 if ($dirName eq '@eaDir');
-	return 1;
+	return ($dirName ne '@eaDir');
 }
-#----------------------------------------------------------------------------
+
 1;
