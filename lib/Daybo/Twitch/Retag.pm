@@ -61,12 +61,12 @@ sub run {
 			if (open(FILEHANDLE, '<' . $relPath)) {
 				my $ext;
 
-				$ext = GetExt($filename);
+				$ext = getExt($filename);
 				close(FILEHANDLE);
 
-				if (IsMp3($ext)) {
+				if (isMp3($ext)) {
 					print "Tagging $relPath\n";
-					Tag(
+					tag(
 						$relPath,
 						parseFileName($filename),
 					);
@@ -91,12 +91,12 @@ sub usage {
 	return 1;
 }
 
-sub IsMp3 {
+sub isMp3 {
 	my $ext = $_[0];
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
 
-sub GetExt {
+sub getExt {
 	my $fn = $_[0];
 	my @arr;
 	my $ext;
@@ -107,7 +107,7 @@ sub GetExt {
 	return $ext;
 }
 
-sub Tag {
+sub tag {
 	my ($file, $artist, $album, $track, $year) = @_;
 
 	my $pid = fork();
@@ -117,12 +117,12 @@ sub Tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		TagPerProcess($file, $artist, $album, $track, $year);
+		tagPerProcess($file, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
 
-sub TagPerProcess {
+sub tagPerProcess {
 	my ($file, $artist, $album, $track, $year) = @_;
 
 	my $mp3 = MP3::Tag->new($file);
