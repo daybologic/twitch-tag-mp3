@@ -4,3 +4,4 @@ blib
 *.swp
 MYMETA.*
 Makefile
+.claude/
