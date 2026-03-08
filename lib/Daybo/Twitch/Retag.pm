@@ -205,6 +205,8 @@ sub parseFileName {
 		$artist =~ s/\b([a-z])/uc($1)/ge;
 		$track =~ s/^([a-z])/uc($1)/e;
 
+		$artist = 'DJ Edit' if ($artist eq 'Edit');
+
 		$album = "${artist} on Twitch";
 
 		return ($artist, $album, $track, $year);
