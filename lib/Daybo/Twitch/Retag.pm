@@ -176,6 +176,7 @@ sub parseFileName {
 	my ($filename) = @_;
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s(\d{4})-\d{2}-\d{2}.*/) {
 		my ($artist, $album, $track, $year) = ($1, undef, undef, $2);
+		my $artistRaw = $artist;
 
 		$track = $filename;
 		$track =~ s/\.mp3$//;
@@ -207,6 +208,7 @@ sub parseFileName {
 
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
+		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 		$album = "${artist} on Twitch";
 
