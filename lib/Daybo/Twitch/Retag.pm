@@ -176,12 +176,15 @@ sub parseFileName {
 	my ($filename) = @_;
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s(\d{4})-\d{2}-\d{2}.*/) {
 		my ($artist, $album, $track, $year) = ($1, undef, undef, $2);
+		my $artistRaw = $artist;
 
 		$track = $filename;
 		$track =~ s/\.mp3$//;
 		$track =~ s/-trim//;
+		$track =~ s/-desilence//;
 		$track =~ s/-tempo//;
 		$track =~ s/-untempo//;
+		$track =~ s/-keep//;
 
 		$artist =~ s/Official//gi;
 		$artist =~ s/Music//gi;
@@ -194,6 +197,19 @@ sub parseFileName {
 		$artist =~ s/_/ /g;
 		$artist =~ s/\s*$//;
 		$artist =~ s/^\s*//;
+
+		if ($artist =~ /^[A-Z]{2,}/ || $artist =~ /[a-z][A-Z]/) {
+			my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
+			$artist = join(' ', map { ucfirst(lc($_)) } @words);
+		}
+
+		$artist =~ s/\b([a-z])/uc($1)/ge;
+		$track =~ s/^([a-z])/uc($1)/e;
+
+		$artist = 'DJ Edit' if ($artist eq 'Edit');
+		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
+		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
+		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 		$album = "${artist} on Twitch";
 
