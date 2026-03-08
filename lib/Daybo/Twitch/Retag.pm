@@ -208,6 +208,7 @@ sub parseFileName {
 
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
+		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 		$album = "${artist} on Twitch";
