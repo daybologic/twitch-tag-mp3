@@ -197,6 +197,9 @@ sub parseFileName {
 		$artist =~ s/\s*$//;
 		$artist =~ s/^\s*//;
 
+		$artist =~ s/^([a-z])/uc($1)/e;
+		$track =~ s/^([a-z])/uc($1)/e;
+
 		$album = "${artist} on Twitch";
 
 		return ($artist, $album, $track, $year);
