@@ -197,6 +197,11 @@ sub parseFileName {
 		$artist =~ s/\s*$//;
 		$artist =~ s/^\s*//;
 
+		if ($artist =~ /^[A-Z]{2,}/) {
+			my @words = ($artist =~ /([A-Z]+(?=[a-z])|[A-Z]?[a-z]+|[0-9]+|[A-Z]+)/g);
+			$artist = join(' ', map { ucfirst(lc($_)) } @words);
+		}
+
 		$artist =~ s/^([a-z])/uc($1)/e;
 		$track =~ s/^([a-z])/uc($1)/e;
 
