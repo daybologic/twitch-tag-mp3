@@ -206,6 +206,7 @@ sub parseFileName {
 		$track =~ s/^([a-z])/uc($1)/e;
 
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
+		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 
 		$album = "${artist} on Twitch";
 
