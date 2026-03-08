@@ -180,8 +180,10 @@ sub parseFileName {
 		$track = $filename;
 		$track =~ s/\.mp3$//;
 		$track =~ s/-trim//;
+		$track =~ s/-desilence//;
 		$track =~ s/-tempo//;
 		$track =~ s/-untempo//;
+		$track =~ s/-keep//;
 
 		$artist =~ s/Official//gi;
 		$artist =~ s/Music//gi;
