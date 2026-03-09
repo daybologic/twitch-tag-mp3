@@ -72,7 +72,6 @@ sub run {
 					print "Tagging $relPath\n";
 					$self->tag(
 						$relPath,
-						$self->noop,
 						parseFileName($filename),
 					);
 				}
@@ -113,7 +112,7 @@ sub getExt {
 }
 
 sub tag {
-	my ($self, $file, $noop, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
 		my $done = waitpid(-1, 0);
@@ -127,16 +126,16 @@ sub tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		tagPerProcess($file, $noop, $artist, $album, $track, $year);
+		$self->tagPerProcess($file, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
 
 sub tagPerProcess {
-	my ($file, $noop, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $artist, $album, $track, $year) = @_;
 
 	warn "artist: $artist, album: $album, track: $track, year: $year"; # TODO: Proper logger, at trace level or debug
-	return if ($noop);
+	return if ($self->noop);
 
 	my $mp3 = MP3::Tag->new($file);
 	$mp3->get_tags();
