@@ -38,8 +38,9 @@ our $VERSION = '0.2.0';
 
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 
-has 'jobs' => (is => 'ro', isa => 'Int', default => 1);
-has 'noop' => (is => 'ro', isa => 'Bool', default => 0);
+has 'jobs'    => (is => 'ro', isa => 'Int',  default => 1);
+has 'noop'    => (is => 'ro', isa => 'Bool', default => 0);
+has 'verbose' => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
 
@@ -58,7 +59,7 @@ sub run {
 		my $relPath = $dirname . '/' . $filename;
 		if (-d $relPath) {
 			if (acceptableDirName($filename)) {
-				print "chdir $relPath\n";
+				$self->log("chdir $relPath");
 				$self->run($relPath);
 			}
 		} else {
@@ -69,7 +70,7 @@ sub run {
 				close(FILEHANDLE);
 
 				if (isMp3($ext)) {
-					print "Tagging $relPath\n";
+					$self->log("Tagging $relPath");
 					$self->tag(
 						$relPath,
 						parseFileName($filename),
@@ -86,6 +87,12 @@ sub run {
 	}
 
 	return 0;
+}
+
+sub log {
+	my ($self, $msg) = @_;
+	print "$msg\n" if ($self->verbose);
+	return;
 }
 
 sub usage {
@@ -134,7 +141,7 @@ sub tag {
 sub tagPerProcess {
 	my ($self, $file, $artist, $album, $track, $year) = @_;
 
-	warn "artist: $artist, album: $album, track: $track, year: $year"; # TODO: Proper logger, at trace level or debug
+	$self->log("artist: $artist, album: $album, track: $track, year: $year");
 
 	return if ($self->noop);
 
