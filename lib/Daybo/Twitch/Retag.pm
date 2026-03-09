@@ -196,17 +196,11 @@ sub __system {
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
-	if ($filename =~ m/^(\w+)\s\(\w+\)\s(\d{4})-\d{2}-\d{2}.*/) {
-		my ($artist, $album, $track, $year) = ($1, undef, undef, $2);
+	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))/) {
+		my ($date, $year, $hh, $mm) = ($2, $3, $4, $5);
+		my $streamId = $6 // $7;
+		my ($artist, $album, $track) = ($1, undef, undef);
 		my $artistRaw = $artist;
-
-		$track = $filename;
-		$track =~ s/\.mp3$//;
-		$track =~ s/-trim//;
-		$track =~ s/-desilence//;
-		$track =~ s/-tempo//;
-		$track =~ s/-untempo//;
-		$track =~ s/-keep//;
 
 		$artist =~ s/Official//gi;
 		$artist =~ s/Music//gi;
@@ -226,13 +220,13 @@ sub parseFileName {
 		}
 
 		$artist =~ s/\b([a-z])/uc($1)/ge;
-		$track =~ s/^([a-z])/uc($1)/e;
 
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
+		$track = "$artist $date ${hh}:${mm}:00 $streamId";
 		$album = "${artist} on Twitch";
 
 		return ($artist, $album, $track, $year);
