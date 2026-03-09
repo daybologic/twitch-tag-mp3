@@ -35,9 +35,11 @@ use MP3::Tag;
 use Moose;
 
 our $VERSION = '0.2.0';
+
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 
 has 'jobs' => (is => 'ro', isa => 'Int', default => 1);
+has 'noop' => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
 
@@ -124,21 +126,25 @@ sub tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		tagPerProcess($file, $artist, $album, $track, $year);
+		$self->tagPerProcess($file, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
 
 sub tagPerProcess {
-	my ($file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $artist, $album, $track, $year) = @_;
+
+	warn "artist: $artist, album: $album, track: $track, year: $year"; # TODO: Proper logger, at trace level or debug
 
 	my $mp3 = MP3::Tag->new($file);
 	$mp3->get_tags();
+
+	return if ($self->noop);
+
 	$mp3->{ID3v1}->remove_tag() if (exists $mp3->{ID3v1});
 	$mp3->{ID3v2}->remove_tag() if (exists $mp3->{ID3v2});
 	$mp3->new_tag("ID3v1");
 	$mp3->new_tag("ID3v2");
-	warn "artist: $artist, album: $album, track: $track, year: $year"; # TODO: Proper logger, at trace level or debug
 	$mp3->{ID3v1}->all(
 		$track,
 		$artist,
