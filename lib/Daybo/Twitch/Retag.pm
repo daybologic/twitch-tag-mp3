@@ -141,8 +141,7 @@ sub tag {
 sub tagPerProcess {
 	my ($self, $file, $artist, $album, $track, $year) = @_;
 
-	$self->log("artist: $artist, album: $album, track: $track, year: $year") if (!$self->noop); # TODO: Proper logger, at trace level or debug
-	print "artist: $artist, album: $album, track: $track, year: $year\n" if ($self->noop);
+	$self->log("artist: $artist, album: $album, track: $track, year: $year") if ($self->verbose || $self->noop);
 
 	return if ($self->noop);
 
