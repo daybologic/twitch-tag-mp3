@@ -1,5 +1,11 @@
 Usage:
 
-	twitch-tag-mp3 <DIR>
+	twitch-tag-mp3 [--noop|-n] <DIR>
 
 Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
+
+Pass --noop to preview the tags which would be written without modifying any files.
+
+Dependencies:
+
+	id3v2

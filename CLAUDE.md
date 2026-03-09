@@ -28,7 +28,7 @@ dpkg-buildpackage -b
 
 - `run($dirname)` — recursively walks directories, skips `@eaDir`, forks a child for each MP3 found.
 - `tag(...)` — forks a child process; parent collects PIDs, child calls `tagPerProcess` then exits.
-- `tagPerProcess(...)` — strips existing ID3v1/v2, writes new tags via `MP3::Tag`.
+- `tagPerProcess(...)` — strips existing ID3v1/v2, writes new tags via the `id3v2` command-line utility.
 - `parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track (filename sans `.mp3`/suffixes), and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
 - `acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
 
