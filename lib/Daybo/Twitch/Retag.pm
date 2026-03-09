@@ -135,10 +135,12 @@ sub tagPerProcess {
 	my ($self, $file, $artist, $album, $track, $year) = @_;
 
 	warn "artist: $artist, album: $album, track: $track, year: $year"; # TODO: Proper logger, at trace level or debug
-	return if ($self->noop);
 
 	my $mp3 = MP3::Tag->new($file);
 	$mp3->get_tags();
+
+	return if ($self->noop);
+
 	$mp3->{ID3v1}->remove_tag() if (exists $mp3->{ID3v1});
 	$mp3->{ID3v2}->remove_tag() if (exists $mp3->{ID3v2});
 	$mp3->new_tag("ID3v1");
