@@ -141,7 +141,7 @@ sub tag {
 sub tagPerProcess {
 	my ($self, $file, $artist, $album, $track, $year) = @_;
 
-	$self->log("artist: $artist, album: $album, track: $track, year: $year") if ($self->verbose || $self->noop);
+	$self->log("artist: $artist, album: $album, track: $track, year: $year");
 
 	return if ($self->noop);
 
