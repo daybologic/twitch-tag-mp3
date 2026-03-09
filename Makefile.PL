@@ -48,7 +48,6 @@ WriteMakefile(
 
         PREREQ_PM => {
                 'Moose'    => 0,
-		'MP3::Tag' => 0,
 	}, BUILD_REQUIRES => {
 		'Sys::CPU' => 0,
 		#'Moose'           => 0,
