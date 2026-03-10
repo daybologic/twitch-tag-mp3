@@ -34,7 +34,7 @@ use English qw(-no_match_vars);
 use File::Spec;
 use Moose;
 
-our $VERSION = '0.2.0';
+our $VERSION = '0.3.0';
 
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 

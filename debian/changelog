@@ -1,12 +1,15 @@
 twitch-tag-mp3 (0.3.0) trixie; urgency=medium
 
   * Add --directory/-d and --jobs/-j command-line flags.
+  * Add --verbose/-v flag
+  * Completely new track and astist tag generation logic
+  * we now use the id3v2 as a helper due to a temporary-file handling bug in MP3::Tag
   * Update packaging for Debian Trixie: debhelper-compat 13, Standards-Version 4.7.3.
   * Add Rules-Requires-Root: no.
   * Remove deprecated debian/compat file.
   * Fix duplicate copyright line and typo in debian/copyright.
 
- -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Sat, 28 Feb 2026 00:00:00 +0000
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Tue, 10 Mar 2026 08:06:24 +0000
 
 twitch-tag-mp3 (0.2.0) stable; urgency=medium
 
