@@ -86,7 +86,10 @@ sub _collect {
 		} elsif (open(FILEHANDLE, '<' . $relPath)) {
 			my $ext = getExt($filename);
 			close(FILEHANDLE);
-			push(@files, [$relPath, $filename]) if isMp3($ext);
+			if (isMp3($ext)) {
+				parseFileName($filename);
+				push(@files, [$relPath, $filename]);
+			}
 		}
 	}
 
