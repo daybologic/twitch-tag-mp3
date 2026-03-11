@@ -46,47 +46,54 @@ my @pids;
 
 sub run {
 	my ($self, $dirname) = @_;
-	my $filename;
-	local *dirHandle;
 
-	if (!opendir(dirHandle, $dirname)) {
-		print "Can\'t open $dirname, ignoring\n";
-		return 0;
+	$self->log("Walking file tree '$dirname'");
+	my @files = $self->_collect($dirname);
+	my $total  = scalar(@files);
+
+	for my $i (0 .. $#files) {
+		my ($relPath, $filename) = @{ $files[$i] };
+		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		$self->log("Tagging $relPath");
+		$self->tag(
+			$relPath,
+			$pct,
+			@{ parseFileName($filename) },
+		);
 	}
-
-	while ($filename = readdir(dirHandle)) {
-		next if ($filename eq '.' || $filename eq '..');
-		my $relPath = $dirname . '/' . $filename;
-		if (-d $relPath) {
-			if (acceptableDirName($filename)) {
-				$self->log("chdir $relPath");
-				$self->run($relPath);
-			}
-		} else {
-			if (open(FILEHANDLE, '<' . $relPath)) {
-				my $ext;
-
-				$ext = getExt($filename);
-				close(FILEHANDLE);
-
-				if (isMp3($ext)) {
-					$self->log("Tagging $relPath");
-					$self->tag(
-						$relPath,
-						parseFileName($filename),
-					);
-				}
-			}
-		}
-	}
-
-	closedir(dirHandle);
 
 	foreach my $pid (@pids) {
 		waitpid($pid, 0);
 	}
+	@pids = ();
 
 	return 0;
+}
+
+sub _collect {
+	my ($self, $dirname) = @_;
+	my @files;
+	local *collectDirHandle;
+
+	return () unless opendir(collectDirHandle, $dirname);
+
+	while (my $filename = readdir(collectDirHandle)) {
+		next if ($filename eq '.' || $filename eq '..');
+		my $relPath = $dirname . '/' . $filename;
+		if (-d $relPath) {
+			push(@files, $self->_collect($relPath)) if acceptableDirName($filename);
+		} elsif (open(FILEHANDLE, '<' . $relPath)) {
+			my $ext = getExt($filename);
+			close(FILEHANDLE);
+			if (isMp3($ext)) {
+				parseFileName($filename);
+				push(@files, [$relPath, $filename]);
+			}
+		}
+	}
+
+	closedir(collectDirHandle);
+	return @files;
 }
 
 sub log {
@@ -119,7 +126,7 @@ sub getExt {
 }
 
 sub tag {
-	my ($self, $file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
 		my $done = waitpid(-1, 0);
@@ -133,15 +140,16 @@ sub tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		$self->tagPerProcess($file, $artist, $album, $track, $year);
+		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
 
 sub tagPerProcess {
-	my ($self, $file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
-	$self->log("artist: $artist, album: $album, track: $track, year: $year");
+	$self->log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
+	    $pct, $artist, $album, $track, $year));
 
 	return if ($self->noop);
 
@@ -193,9 +201,15 @@ sub __system {
 	return $exitCode;
 }
 
+my %__filenameParserContext = ( );
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
+
+	if (my $cached = $__filenameParserContext{$filename}) {
+		return $cached;
+	}
+
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))/) {
 		my ($date, $year, $hh, $mm) = ($2, $3, $4, $5);
 		my $streamId = $6 // $7;
@@ -229,7 +243,7 @@ sub parseFileName {
 		$track = "$artist $date ${hh}:${mm}:00 $streamId";
 		$album = "${artist} on Twitch";
 
-		return ($artist, $album, $track, $year);
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
 
 	die("Cannot parse filename structure: '$filename'");
