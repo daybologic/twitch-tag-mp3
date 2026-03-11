@@ -66,6 +66,7 @@ sub _countFiles {
 		if (-d $relPath) {
 			$count += $self->_countFiles($relPath) if acceptableDirName($filename);
 		} elsif (isMp3(getExt($filename))) {
+			parseFileName($filename); # bail early
 			$count++;
 		}
 	}
