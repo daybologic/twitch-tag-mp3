@@ -48,7 +48,10 @@ my $filesDone  = 0;
 
 sub run {
 	my ($self, $dirname) = @_;
+
+	$self->log("Walking file tree '$dirname'");
 	$totalFiles = $self->_countFiles($dirname);
+
 	$filesDone  = 0;
 	return $self->_run($dirname);
 }
