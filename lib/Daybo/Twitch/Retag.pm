@@ -50,7 +50,6 @@ sub run {
 	$self->log("Walking file tree '$dirname'");
 	my @files = $self->_collect($dirname);
 	my $total  = scalar(@files);
-	$self->log("Found $total file(s) to tag");
 
 	for my $i (0 .. $#files) {
 		my ($relPath, $filename) = @{ $files[$i] };
