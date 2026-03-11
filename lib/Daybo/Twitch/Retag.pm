@@ -112,7 +112,7 @@ sub _run {
 					$self->tag(
 						$relPath,
 						$pct,
-						parseFileName($filename),
+						@{ parseFileName($filename) },
 					);
 				}
 			}
@@ -233,9 +233,15 @@ sub __system {
 	return $exitCode;
 }
 
+my %__filenameParserContext = ( );
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	my ($filename) = @_;
+
+	if (my $cached = $__filenameParserContext{$filename}) {
+		return $cached;
+	}
+
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))/) {
 		my ($date, $year, $hh, $mm) = ($2, $3, $4, $5);
 		my $streamId = $6 // $7;
@@ -269,7 +275,7 @@ sub parseFileName {
 		$track = "$artist $date ${hh}:${mm}:00 $streamId";
 		$album = "${artist} on Twitch";
 
-		return ($artist, $album, $track, $year);
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
 
 	die("Cannot parse filename structure: '$filename'");
