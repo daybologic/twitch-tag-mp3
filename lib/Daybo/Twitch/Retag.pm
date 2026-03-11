@@ -43,89 +43,55 @@ has 'noop'    => (is => 'ro', isa => 'Bool', default => 0);
 has 'verbose' => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
-my $totalFiles = 0;
-my $filesDone  = 0;
 
 sub run {
 	my ($self, $dirname) = @_;
 
 	$self->log("Walking file tree '$dirname'");
-	$totalFiles = $self->_countFiles($dirname);
+	my @files = $self->_collect($dirname);
+	my $total  = scalar(@files);
+	$self->log("Found $total file(s) to tag");
 
-	$filesDone  = 0;
-	return $self->_run($dirname);
-}
-
-sub _countFiles {
-	my ($self, $dirname) = @_;
-	my $count = 0;
-	local *countDirHandle;
-
-	return 0 unless opendir(countDirHandle, $dirname);
-
-	while (my $filename = readdir(countDirHandle)) {
-		next if ($filename eq '.' || $filename eq '..');
-		my $relPath = $dirname . '/' . $filename;
-		if (-d $relPath) {
-			$count += $self->_countFiles($relPath) if acceptableDirName($filename);
-		} elsif (isMp3(getExt($filename))) {
-			parseFileName($filename); # bail early
-			$count++;
-		}
+	for my $i (0 .. $#files) {
+		my ($relPath, $filename) = @{ $files[$i] };
+		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		$self->log("Tagging $relPath");
+		$self->tag(
+			$relPath,
+			$pct,
+			@{ parseFileName($filename) },
+		);
 	}
-
-	closedir(countDirHandle);
-	return $count;
-}
-
-sub _run {
-	my ($self, $dirname) = @_;
-	my $filename;
-	local *dirHandle;
-
-	if (!opendir(dirHandle, $dirname)) {
-		print "Can\'t open $dirname, ignoring\n";
-		return 0;
-	}
-
-	while ($filename = readdir(dirHandle)) {
-		next if ($filename eq '.' || $filename eq '..');
-		my $relPath = $dirname . '/' . $filename;
-		if (-d $relPath) {
-			if (acceptableDirName($filename)) {
-				$self->log("chdir $relPath");
-				$self->_run($relPath);
-			}
-		} else {
-			if (open(FILEHANDLE, '<' . $relPath)) {
-				my $ext;
-
-				$ext = getExt($filename);
-				close(FILEHANDLE);
-
-				if (isMp3($ext)) {
-					$filesDone++;
-					my $pct = $totalFiles > 0
-					    ? int($filesDone / $totalFiles * 100)
-					    : 0;
-					$self->log("Tagging $relPath");
-					$self->tag(
-						$relPath,
-						$pct,
-						@{ parseFileName($filename) },
-					);
-				}
-			}
-		}
-	}
-
-	closedir(dirHandle);
 
 	foreach my $pid (@pids) {
 		waitpid($pid, 0);
 	}
+	@pids = ();
 
 	return 0;
+}
+
+sub _collect {
+	my ($self, $dirname) = @_;
+	my @files;
+	local *collectDirHandle;
+
+	return () unless opendir(collectDirHandle, $dirname);
+
+	while (my $filename = readdir(collectDirHandle)) {
+		next if ($filename eq '.' || $filename eq '..');
+		my $relPath = $dirname . '/' . $filename;
+		if (-d $relPath) {
+			push(@files, $self->_collect($relPath)) if acceptableDirName($filename);
+		} elsif (open(FILEHANDLE, '<' . $relPath)) {
+			my $ext = getExt($filename);
+			close(FILEHANDLE);
+			push(@files, [$relPath, $filename]) if isMp3($ext);
+		}
+	}
+
+	closedir(collectDirHandle);
+	return @files;
 }
 
 sub log {
