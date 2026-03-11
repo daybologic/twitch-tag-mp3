@@ -43,8 +43,38 @@ has 'noop'    => (is => 'ro', isa => 'Bool', default => 0);
 has 'verbose' => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
+my $totalFiles = 0;
+my $filesDone  = 0;
 
 sub run {
+	my ($self, $dirname) = @_;
+	$totalFiles = $self->_countFiles($dirname);
+	$filesDone  = 0;
+	return $self->_run($dirname);
+}
+
+sub _countFiles {
+	my ($self, $dirname) = @_;
+	my $count = 0;
+	local *countDirHandle;
+
+	return 0 unless opendir(countDirHandle, $dirname);
+
+	while (my $filename = readdir(countDirHandle)) {
+		next if ($filename eq '.' || $filename eq '..');
+		my $relPath = $dirname . '/' . $filename;
+		if (-d $relPath) {
+			$count += $self->_countFiles($relPath) if acceptableDirName($filename);
+		} elsif (isMp3(getExt($filename))) {
+			$count++;
+		}
+	}
+
+	closedir(countDirHandle);
+	return $count;
+}
+
+sub _run {
 	my ($self, $dirname) = @_;
 	my $filename;
 	local *dirHandle;
@@ -60,7 +90,7 @@ sub run {
 		if (-d $relPath) {
 			if (acceptableDirName($filename)) {
 				$self->log("chdir $relPath");
-				$self->run($relPath);
+				$self->_run($relPath);
 			}
 		} else {
 			if (open(FILEHANDLE, '<' . $relPath)) {
@@ -70,9 +100,14 @@ sub run {
 				close(FILEHANDLE);
 
 				if (isMp3($ext)) {
+					$filesDone++;
+					my $pct = $totalFiles > 0
+					    ? int($filesDone / $totalFiles * 100)
+					    : 0;
 					$self->log("Tagging $relPath");
 					$self->tag(
 						$relPath,
+						$pct,
 						parseFileName($filename),
 					);
 				}
@@ -119,7 +154,7 @@ sub getExt {
 }
 
 sub tag {
-	my ($self, $file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
 		my $done = waitpid(-1, 0);
@@ -133,15 +168,16 @@ sub tag {
 		push(@pids, $pid);
 	} else { # child
 		$0 = sprintf("tagging '%s'", $file);
-		$self->tagPerProcess($file, $artist, $album, $track, $year);
+		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		exit(0);
 	}
 }
 
 sub tagPerProcess {
-	my ($self, $file, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
-	$self->log("artist: $artist, album: $album, track: $track, year: $year");
+	$self->log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
+	    $pct, $artist, $album, $track, $year));
 
 	return if ($self->noop);
 
