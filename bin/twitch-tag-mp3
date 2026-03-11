@@ -44,24 +44,25 @@ package main;
 use strict;
 use warnings;
 
-use Getopt::Long;
-use lib './lib';
 use Daybo::Twitch::Retag;
+use Getopt::Long;
+use POSIX qw(EXIT_FAILURE);
+use lib './lib';
 
 sub main {
 	my $startDir;
 	my $jobs = 1;
 	my $noop = 0;
 	my $verbose = 0;
-	GetOptions(
+	return EXIT_FAILURE unless (GetOptions(
 		'directory|d=s' => \$startDir,
 		'jobs|j=i'      => \$jobs,
 		'noop|n'        => \$noop,
 		'verbose|v'     => \$verbose,
-	);
+	));
 	if ($jobs < 1) {
 		print STDERR "Error: --jobs must be at least 1\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 	my $retagger = Daybo::Twitch::Retag->new(jobs => $jobs, noop => $noop, verbose => $verbose);
 	return $retagger->usage() if (!defined($startDir));
