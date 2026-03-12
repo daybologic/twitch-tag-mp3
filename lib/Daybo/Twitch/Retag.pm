@@ -38,9 +38,10 @@ our $VERSION = '0.3.0';
 
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 
-has 'jobs'    => (is => 'ro', isa => 'Int',  default => 1);
-has 'noop'    => (is => 'ro', isa => 'Bool', default => 0);
-has 'verbose' => (is => 'ro', isa => 'Bool', default => 0);
+has 'jobs'      => (is => 'ro', isa => 'Int',  default => 1);
+has 'noop'      => (is => 'ro', isa => 'Bool', default => 0);
+has 'recursive' => (is => 'ro', isa => 'Bool', default => 0);
+has 'verbose'   => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
 
@@ -81,7 +82,8 @@ sub _collect {
 		next if ($filename eq '.' || $filename eq '..');
 		my $relPath = $dirname . '/' . $filename;
 		if (-d $relPath) {
-			push(@files, $self->_collect($relPath)) if acceptableDirName($filename);
+			push(@files, $self->_collect($relPath))
+			    if ($self->recursive && acceptableDirName($filename));
 		} elsif (open(FILEHANDLE, '<' . $relPath)) {
 			my $ext = getExt($filename);
 			close(FILEHANDLE);
