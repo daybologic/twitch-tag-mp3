@@ -112,18 +112,18 @@ sub usage {
 }
 
 sub isMp3 {
-	my $ext = $_[0];
+	my ($ext) = @_;
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
 
 sub getExt {
-	my $fn = $_[0];
+	my ($fn) = @_;
 	my @arr;
 	my $ext;
 
 	@arr = split(m/\./, $fn);
 	$ext = $arr[scalar(@arr)-1];
-	return undef if ($fn eq $ext);
+	return if ($fn eq $ext);
 	return $ext;
 }
 
@@ -141,10 +141,12 @@ sub tag {
 	if ($pid) { # parent
 		push(@pids, $pid);
 	} else { # child
-		$0 = sprintf("tagging '%s'", $file);
+		local $0 = sprintf("tagging '%s'", $file);
 		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		exit(0);
 	}
+
+	return;
 }
 
 sub tagPerProcess {
