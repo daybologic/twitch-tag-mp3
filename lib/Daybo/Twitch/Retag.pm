@@ -164,6 +164,21 @@ sub readTags {
 	return %tags ? \%tags : undef;
 }
 
+sub logTagChanges {
+	my ($self, $pct, $existing, $artist, $album, $track, $year) = @_;
+
+	for my $f (['artist', $existing->{artist}, $artist],
+	           ['album',  $existing->{album},  $album],
+	           ['track',  $existing->{track},  $track],
+	           ['year',   $existing->{year},   $year])
+	{
+		my ($name, $old, $new) = @{$f};
+		$old //= '';
+		$self->log(sprintf('[%d%%] %s: "%s" -> "%s"', $pct, $name, $old, $new))
+		    if ($old ne $new);
+	}
+}
+
 sub tagPerProcess {
 	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
@@ -180,6 +195,9 @@ sub tagPerProcess {
 		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
 		return;
 	}
+
+	$self->logTagChanges($pct, $existing, $artist, $album, $track, $year)
+	    if ($existing);
 
 	return if ($self->noop);
 
