@@ -35,5 +35,5 @@ scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repoRoot=$(CDPATH= cd -- "$scriptDir/../../.." && pwd)
 
 while IFS= read -r -d '' f; do
-	"${scriptDir}/../../maint/podchecker.sh" "$f" || true
+	"${scriptDir}/../../maint/podchecker.sh" "$f"
 done < <(find "$repoRoot/lib" -name '*.pm' -type f -print0)
