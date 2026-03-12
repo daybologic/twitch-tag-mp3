@@ -70,7 +70,11 @@ sub main {
 	}
 
 	my $retagger = Daybo::Twitch::Retag->new(
-	    jobs => $jobs, noop => $noop, recursive => $recursive, verbose => $verbose);
+		jobs => $jobs,
+		noop => $noop,
+		recursive => $recursive,
+		verbose => $verbose,
+	);
 
 	return $retagger->usage() if (!defined($startDir));
 	return $retagger->run($startDir);
