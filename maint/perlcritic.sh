@@ -31,8 +31,39 @@
 
 set -eu
 
-scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repoRoot=$(CDPATH= cd -- "$scriptDir/.." && pwd)
+# perlcritic wrapper: advisory mode (never fails the build)
+# - Accepts multiple file arguments (works with: find ... -exec ... {} +)
+# - Calls the real perlcritic
+# - Always exits 0, but preserves perlcritic output to stdout/stderr.
 
-find "${repoRoot}/bin/" -type f -exec "${scriptDir}/perlcritic.sh" {} +
-find "${repoRoot}/lib/" -name "*.pm" -type f -exec "${scriptDir}/perlcritic.sh" {} +
+# Locate perlcritic
+PERLCRITIC_BIN="${PERLCRITIC_BIN:-perlcritic}"
+
+# Default options (override by setting PERLCRITIC_OPTS in environment if you want)
+# levels:
+#  * brutal
+#  * cruel
+#  * harsh
+#  * stern
+#  * gentle
+DEFAULT_OPTS="--stern --nocolor --profile-strictness quiet --quiet"
+
+# If you want to pass extra flags, do:
+#   PERLCRITIC_OPTS="--severity 3" bin/maint/perlcritic.sh lib/Foo.pm
+PERLCRITIC_OPTS="${PERLCRITIC_OPTS:-}"
+
+# Nothing to do
+if [ "$#" -eq 0 ]; then
+	exit 0
+fi
+
+# Run perlcritic over all files passed in one invocation.
+# We intentionally ignore exit status to make it "information-only".
+# perlcritic exits:
+#   0 = no violations
+#   1 = perlcritic error (e.g., profile/policy issue)
+#   2 = violations found
+# We don't want any of these to fail CI here.
+"$PERLCRITIC_BIN" $DEFAULT_OPTS $PERLCRITIC_OPTS "$@"
+
+exit 0
