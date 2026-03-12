@@ -16,7 +16,7 @@ repos:
         entry: maint/run-perlc.sh
         language: system
         pass_filenames: true
-        files: (?i)\.p[lm]$
+        files: (^bin/)|(?i:\.p[lm]$)
       - id: run-podchecker
         name: PoD check
         entry: maint/run-podchecker.sh
