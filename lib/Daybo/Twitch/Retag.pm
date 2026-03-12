@@ -147,11 +147,39 @@ sub tag {
 	}
 }
 
+sub readTags {
+	my ($file) = @_;
+	my %tags;
+
+	open(my $fh, '-|', 'id3v2', '-l', $file) or return undef;
+	while (my $line = <$fh>) {
+		chomp $line;
+		if    ($line =~ /^TPE1[^:]+:\s*(.+)$/) { $tags{artist} = $1 }
+		elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) { $tags{album}  = $1 }
+		elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) { $tags{track}  = $1 }
+		elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) { $tags{year}   = $1 }
+	}
+	close($fh);
+
+	return %tags ? \%tags : undef;
+}
+
 sub tagPerProcess {
 	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 
 	$self->log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
 	    $pct, $artist, $album, $track, $year));
+
+	my $existing = readTags($file);
+	if ($existing
+	    && ($existing->{artist} // '') eq $artist
+	    && ($existing->{album}  // '') eq $album
+	    && ($existing->{track}  // '') eq $track
+	    && ($existing->{year}   // '') eq $year)
+	{
+		$self->log(sprintf('[%d%%] Tags unchanged, skipping', $pct));
+		return;
+	}
 
 	return if ($self->noop);
 
