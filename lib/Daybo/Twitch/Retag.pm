@@ -177,7 +177,7 @@ sub tagPerProcess {
 	    && ($existing->{track}  // '') eq $track
 	    && ($existing->{year}   // '') eq $year)
 	{
-		$self->log(sprintf('[%d%%] Tags unchanged, skipping', $pct));
+		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
 		return;
 	}
 
