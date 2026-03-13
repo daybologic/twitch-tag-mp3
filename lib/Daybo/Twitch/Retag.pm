@@ -165,7 +165,7 @@ sub readTags {
 		elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) { $tags{album}  = $1 }
 		elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) { $tags{track}  = $1 }
 		elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) { $tags{year}    = $1 }
-		elsif ($line =~ /^COMM[^:]+:\s*(.+)$/) { $tags{comment} = $1 }
+		elsif ($line =~ /^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/) { $tags{comment} = $1 }
 	}
 	close($fh);
 
