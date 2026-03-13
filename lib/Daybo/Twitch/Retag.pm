@@ -32,6 +32,8 @@
 package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Spec;
+use IO::Dir;
+use IPC::Run3;
 use Moose;
 
 our $VERSION = '0.3.0';
@@ -74,19 +76,22 @@ sub run {
 sub _collect {
 	my ($self, $dirname) = @_;
 	my @files;
-	local *collectDirHandle;
 
-	return () unless opendir(collectDirHandle, $dirname);
+	my $dir = IO::Dir->new($dirname);
+	return () unless ($dir);
 
-	while (my $filename = readdir(collectDirHandle)) {
+	while (defined(my $filename = $dir->read())) {
 		next if ($filename eq '.' || $filename eq '..');
+
 		my $relPath = $dirname . '/' . $filename;
+
 		if (-d $relPath) {
 			push(@files, $self->_collect($relPath))
-			    if ($self->recursive && acceptableDirName($filename));
-		} elsif (open(FILEHANDLE, '<' . $relPath)) {
+				if ($self->recursive && acceptableDirName($filename));
+		} elsif (open(my $fh, '<', $relPath)) {
 			my $ext = getExt($filename);
-			close(FILEHANDLE);
+			close($fh);
+
 			if (isMp3($ext)) {
 				parseFileName($filename);
 				push(@files, [$relPath, $filename]);
@@ -94,11 +99,11 @@ sub _collect {
 		}
 	}
 
-	closedir(collectDirHandle);
+	$dir->close();
 	return @files;
 }
 
-sub log {
+sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 	my ($self, $msg) = @_;
 	print "$msg\n" if ($self->verbose);
 	return;
@@ -112,18 +117,18 @@ sub usage {
 }
 
 sub isMp3 {
-	my $ext = $_[0];
+	my ($ext) = @_;
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
 
 sub getExt {
-	my $fn = $_[0];
+	my ($fn) = @_;
 	my @arr;
 	my $ext;
 
 	@arr = split(m/\./, $fn);
 	$ext = $arr[scalar(@arr)-1];
-	return undef if ($fn eq $ext);
+	return if ($fn eq $ext);
 	return $ext;
 }
 
@@ -141,10 +146,12 @@ sub tag {
 	if ($pid) { # parent
 		push(@pids, $pid);
 	} else { # child
-		$0 = sprintf("tagging '%s'", $file);
+		local $0 = sprintf("tagging '%s'", $file);
 		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		exit(0);
 	}
+
+	return;
 }
 
 sub tagPerProcess {
@@ -172,31 +179,23 @@ sub tagPerProcess {
 sub __system {
 	my (@args) = @_;
 
-	open(my $null_fh, '>', File::Spec->devnull())
-	    or die("Can't open null device: $ERRNO");
-
-	open(my $save_stdout, '>&', \*STDOUT)
-	    or die("Can't dup STDOUT: $ERRNO");
-	open(my $save_stderr, '>&', \*STDERR)
-	    or die("Can't dup STDERR: $ERRNO");
-
-	open(STDOUT, '>&', $null_fh)
-	    or die("Can't redirect STDOUT: $ERRNO");
-	open(STDERR, '>&', $null_fh)
-	    or die("Can't redirect STDERR: $ERRNO");
-
-	system(@args);
+	run3(
+		\@args,
+		undef,
+		File::Spec->devnull(),
+		File::Spec->devnull(),
+	);
 
 	my $exitCode = $CHILD_ERROR;
-
-	open(STDOUT, '>&', $save_stdout)
-	    or die("Can't restore STDOUT: $ERRNO");
-	open(STDERR, '>&', $save_stderr)
-	    or die("Can't restore STDERR: $ERRNO");
-
 	if ($exitCode == -1) {
 		die("Failed to run id3v2: $ERRNO");
-	} elsif ($exitCode != 0) {
+	} elsif ($exitCode & 127) {
+		die(sprintf(
+			'id3v2 died with signal %d%s',
+			($exitCode & 127),
+			($exitCode & 128) ? ' (core dumped)' : q{}
+		));
+	} elsif (($exitCode >> 8) != 0) {
 		die(sprintf('id3v2 exited with status %d', $exitCode >> 8));
 	}
 

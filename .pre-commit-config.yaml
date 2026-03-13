@@ -3,6 +3,22 @@ repos:
     hooks:
       - id: trap-goose-corruption
         name: Block line-number/markdown corruption in lib/
-        entry: maint/trap-goose-corruption.sh
+        entry: maint/run-trap-goose.sh
+        language: system
+        pass_filenames: false
+      - id: run-perlcritic
+        name: perlcritic
+        entry: maint/run-perlcritic.sh
+        language: system
+        pass_filenames: false
+      - id: run-perlc
+        name: perl compile check
+        entry: maint/run-perlc.sh
+        language: system
+        pass_filenames: true
+        files: (^bin/)|(?i:\.p[lm]$)
+      - id: run-podchecker
+        name: PoD check
+        entry: maint/run-podchecker.sh
         language: system
         pass_filenames: false

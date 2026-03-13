@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/sh
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
 #
-#     * Neither the name of the the maintainer, nor the names of its contributors
+#     * Neither the name of the Daybo Logic nor the names of its contributors
 #       may be used to endorse or promote products derived from this software
 #       without specific prior written permission.
 #
@@ -29,55 +29,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-=head1 SYNOPSIS
+set -eu
 
-Usage:
+scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repoRoot=$(CDPATH= cd -- "$scriptDir/.." && pwd)
 
-	twitch-tag-mp3 --directory <DIR> [--jobs <N>] [--recursive] [--verbose] [--noop]
-	twitch-tag-mp3 -d <DIR> [-j <N>] [-r] [-v] [-n]
-
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
-
-=cut
-
-package main;
-use strict;
-use warnings;
-
-use Daybo::Twitch::Retag;
-use Getopt::Long;
-use POSIX qw(EXIT_FAILURE);
-use lib './lib';
-
-sub main {
-	my $startDir;
-	my $jobs      = 1;
-	my $noop      = 0;
-	my $recursive = 0;
-	my $verbose   = 0;
-
-	return EXIT_FAILURE unless (GetOptions(
-		'directory|d=s' => \$startDir,
-		'jobs|j=i'      => \$jobs,
-		'noop|n'        => \$noop,
-		'recursive|r'   => \$recursive,
-		'verbose|v'     => \$verbose,
-	));
-
-	if ($jobs < 1) {
-		print STDERR "Error: --jobs must be at least 1\n";
-		return EXIT_FAILURE;
-	}
-
-	my $retagger = Daybo::Twitch::Retag->new(
-		jobs => $jobs,
-		noop => $noop,
-		recursive => $recursive,
-		verbose => $verbose,
-	);
-
-	return $retagger->usage() if (!defined($startDir));
-	return $retagger->run($startDir);
-}
-
-exit(main()) unless (caller());
+find "${repoRoot}/bin/" -type f -exec "${scriptDir}/perlcritic.sh" {} +
+find "${repoRoot}/lib/" -name "*.pm" -type f -exec "${scriptDir}/perlcritic.sh" {} +

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/sh
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
 #
-#     * Neither the name of the the maintainer, nor the names of its contributors
+#     * Neither the name of the Daybo Logic nor the names of its contributors
 #       may be used to endorse or promote products derived from this software
 #       without specific prior written permission.
 #
@@ -29,55 +29,41 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-=head1 SYNOPSIS
+set -eu
 
-Usage:
+# perlcritic wrapper: advisory mode (never fails the build)
+# - Accepts multiple file arguments (works with: find ... -exec ... {} +)
+# - Calls the real perlcritic
+# - Always exits 0, but preserves perlcritic output to stdout/stderr.
 
-	twitch-tag-mp3 --directory <DIR> [--jobs <N>] [--recursive] [--verbose] [--noop]
-	twitch-tag-mp3 -d <DIR> [-j <N>] [-r] [-v] [-n]
+# Locate perlcritic
+PERLCRITIC_BIN="${PERLCRITIC_BIN:-perlcritic}"
 
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
+# Default options (override by setting PERLCRITIC_OPTS in environment if you want)
+# levels:
+#  * brutal
+#  * cruel
+#  * harsh
+#  * stern
+#  * gentle
+DEFAULT_OPTS="--stern --nocolor --profile-strictness quiet --quiet"
 
-=cut
+# If you want to pass extra flags, do:
+#   PERLCRITIC_OPTS="--severity 3" bin/maint/perlcritic.sh lib/Foo.pm
+PERLCRITIC_OPTS="${PERLCRITIC_OPTS:-}"
 
-package main;
-use strict;
-use warnings;
+# Nothing to do
+if [ "$#" -eq 0 ]; then
+	exit 0
+fi
 
-use Daybo::Twitch::Retag;
-use Getopt::Long;
-use POSIX qw(EXIT_FAILURE);
-use lib './lib';
+# Run perlcritic over all files passed in one invocation.
+# We intentionally ignore exit status to make it "information-only".
+# perlcritic exits:
+#   0 = no violations
+#   1 = perlcritic error (e.g., profile/policy issue)
+#   2 = violations found
+# We don't want any of these to fail CI here.
+"$PERLCRITIC_BIN" $DEFAULT_OPTS $PERLCRITIC_OPTS "$@"
 
-sub main {
-	my $startDir;
-	my $jobs      = 1;
-	my $noop      = 0;
-	my $recursive = 0;
-	my $verbose   = 0;
-
-	return EXIT_FAILURE unless (GetOptions(
-		'directory|d=s' => \$startDir,
-		'jobs|j=i'      => \$jobs,
-		'noop|n'        => \$noop,
-		'recursive|r'   => \$recursive,
-		'verbose|v'     => \$verbose,
-	));
-
-	if ($jobs < 1) {
-		print STDERR "Error: --jobs must be at least 1\n";
-		return EXIT_FAILURE;
-	}
-
-	my $retagger = Daybo::Twitch::Retag->new(
-		jobs => $jobs,
-		noop => $noop,
-		recursive => $recursive,
-		verbose => $verbose,
-	);
-
-	return $retagger->usage() if (!defined($startDir));
-	return $retagger->run($startDir);
-}
-
-exit(main()) unless (caller());
+exit 0
