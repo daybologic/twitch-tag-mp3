@@ -32,6 +32,7 @@
 package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Spec;
+use IO::Dir;
 use Moose;
 
 our $VERSION = '0.3.0';
@@ -74,19 +75,22 @@ sub run {
 sub _collect {
 	my ($self, $dirname) = @_;
 	my @files;
-	local *collectDirHandle;
 
-	return () unless opendir(collectDirHandle, $dirname);
+	my $dir = IO::Dir->new($dirname);
+	return () unless ($dir);
 
-	while (my $filename = readdir(collectDirHandle)) {
+	while (defined(my $filename = $dir->read())) {
 		next if ($filename eq '.' || $filename eq '..');
+
 		my $relPath = $dirname . '/' . $filename;
+
 		if (-d $relPath) {
 			push(@files, $self->_collect($relPath))
-			    if ($self->recursive && acceptableDirName($filename));
-		} elsif (open(FILEHANDLE, '<' . $relPath)) {
+				if ($self->recursive && acceptableDirName($filename));
+		} elsif (open(my $fh, '<', $relPath)) {
 			my $ext = getExt($filename);
-			close(FILEHANDLE);
+			close($fh);
+
 			if (isMp3($ext)) {
 				parseFileName($filename);
 				push(@files, [$relPath, $filename]);
@@ -94,11 +98,11 @@ sub _collect {
 		}
 	}
 
-	closedir(collectDirHandle);
+	$dir->close();
 	return @files;
 }
 
-sub log {
+sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 	my ($self, $msg) = @_;
 	print "$msg\n" if ($self->verbose);
 	return;
