@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/bin/sh
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,55 +29,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-=head1 SYNOPSIS
+set -eu
 
-Usage:
+# Reject common corruption patterns in lib/
+# - markdown fences
+# - file headers like "### /path/file"
+# - line-number prefixes like "123: "
+if grep -R -n -E '^(###\s+/|```|[0-9]+:\s)' lib/ >/dev/null 2>&1; then
+	echo "Error: Detected Goose-style corruption in lib/ (headers, fences, or line numbers)."
+	exit 1
+fi
 
-	twitch-tag-mp3 --directory <DIR> [--jobs <N>] [--recursive] [--verbose] [--noop]
-	twitch-tag-mp3 -d <DIR> [-j <N>] [-r] [-v] [-n]
-
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
-
-=cut
-
-package main;
-use strict;
-use warnings;
-
-use Daybo::Twitch::Retag;
-use Getopt::Long;
-use POSIX qw(EXIT_FAILURE);
-use lib './lib';
-
-sub main {
-	my $startDir;
-	my $jobs      = 1;
-	my $noop      = 0;
-	my $recursive = 0;
-	my $verbose   = 0;
-
-	return EXIT_FAILURE unless (GetOptions(
-		'directory|d=s' => \$startDir,
-		'jobs|j=i'      => \$jobs,
-		'noop|n'        => \$noop,
-		'recursive|r'   => \$recursive,
-		'verbose|v'     => \$verbose,
-	));
-
-	if ($jobs < 1) {
-		print STDERR "Error: --jobs must be at least 1\n";
-		return EXIT_FAILURE;
-	}
-
-	my $retagger = Daybo::Twitch::Retag->new(
-		jobs => $jobs,
-		noop => $noop,
-		recursive => $recursive,
-		verbose => $verbose,
-	);
-
-	return $retagger->usage() if (!defined($startDir));
-	return $retagger->run($startDir);
-}
-
-exit(main()) unless (caller());
+exit 0
