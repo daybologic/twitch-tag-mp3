@@ -158,7 +158,7 @@ sub readTags {
 	my ($file) = @_;
 	my %tags;
 
-	open(my $fh, '-|', 'id3v2', '-l', $file) or return undef;
+	open(my $fh, '-|', 'id3v2', '-l', $file) or return;
 	while (my $line = <$fh>) {
 		chomp $line;
 		if    ($line =~ /^TPE1[^:]+:\s*(.+)$/) { $tags{artist} = $1 }
@@ -184,6 +184,8 @@ sub logTagChanges {
 		$self->log(sprintf('[%d%%] %s: "%s" -> "%s"', $pct, $name, $old, $new))
 		    if ($old ne $new);
 	}
+
+	return;
 }
 
 sub tagPerProcess {
