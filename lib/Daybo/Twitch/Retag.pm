@@ -33,6 +33,7 @@ package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Spec;
 use IO::Dir;
+use IPC::Run3;
 use Moose;
 
 our $VERSION = '0.3.0';
@@ -178,17 +179,12 @@ sub tagPerProcess {
 sub __system {
 	my (@args) = @_;
 
-	{
-		local *STDOUT;
-		local *STDERR;
-
-		open(STDOUT, '>', File::Spec->devnull())
-			or die("Can't redirect STDOUT: $ERRNO");
-		open(STDERR, '>', File::Spec->devnull())
-			or die("Can't redirect STDERR: $ERRNO");
-
-		system(@args);
-	}
+	run3(
+		\@args,
+		undef,
+		File::Spec->devnull(),
+		File::Spec->devnull(),
+	);
 
 	my $exitCode = $CHILD_ERROR;
 	if ($exitCode == -1) {
