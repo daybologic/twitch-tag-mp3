@@ -178,31 +178,28 @@ sub tagPerProcess {
 sub __system {
 	my (@args) = @_;
 
-	open(my $null_fh, '>', File::Spec->devnull())
-	    or die("Can't open null device: $ERRNO");
+	{
+		local *STDOUT;
+		local *STDERR;
 
-	open(my $save_stdout, '>&', \*STDOUT)
-	    or die("Can't dup STDOUT: $ERRNO");
-	open(my $save_stderr, '>&', \*STDERR)
-	    or die("Can't dup STDERR: $ERRNO");
+		open(STDOUT, '>', File::Spec->devnull())
+			or die("Can't redirect STDOUT: $ERRNO");
+		open(STDERR, '>', File::Spec->devnull())
+			or die("Can't redirect STDERR: $ERRNO");
 
-	open(STDOUT, '>&', $null_fh)
-	    or die("Can't redirect STDOUT: $ERRNO");
-	open(STDERR, '>&', $null_fh)
-	    or die("Can't redirect STDERR: $ERRNO");
-
-	system(@args);
+		system(@args);
+	}
 
 	my $exitCode = $CHILD_ERROR;
-
-	open(STDOUT, '>&', $save_stdout)
-	    or die("Can't restore STDOUT: $ERRNO");
-	open(STDERR, '>&', $save_stderr)
-	    or die("Can't restore STDERR: $ERRNO");
-
 	if ($exitCode == -1) {
 		die("Failed to run id3v2: $ERRNO");
-	} elsif ($exitCode != 0) {
+	} elsif ($exitCode & 127) {
+		die(sprintf(
+			'id3v2 died with signal %d%s',
+			($exitCode & 127),
+			($exitCode & 128) ? ' (core dumped)' : q{}
+		));
+	} elsif (($exitCode >> 8) != 0) {
 		die(sprintf('id3v2 exited with status %d', $exitCode >> 8));
 	}
 
