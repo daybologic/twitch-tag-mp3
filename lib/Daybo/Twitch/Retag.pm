@@ -211,8 +211,8 @@ sub parseFileName {
 		return $cached;
 	}
 
-	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))/) {
-		my ($date, $year, $hh, $mm) = ($2, $3, $4, $5);
+	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})(?:\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))?)?/) {
+		my ($date, $year, $hh, $mm) = ($2, $3, $4 // '00', $5 // '00');
 		my $streamId = $6 // $7;
 		my ($artist, $album, $track) = ($1, undef, undef);
 		my $artistRaw = $artist;
@@ -241,7 +241,8 @@ sub parseFileName {
 		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
-		$track = "$artist $date ${hh}:${mm}:00 $streamId";
+		$track = "$artist $date ${hh}:${mm}:00";
+		$track .= " $streamId" if (defined($streamId));
 		$album = "${artist} on Twitch";
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
