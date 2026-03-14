@@ -34,6 +34,7 @@ use English qw(-no_match_vars);
 use File::Spec;
 use IO::Dir;
 use IPC::Run3;
+use JSON::PP qw(encode_json);
 use Moose;
 
 our $VERSION = '0.3.0';
@@ -41,6 +42,7 @@ our $VERSION = '0.3.0';
 our $URL = 'https://git.sr.ht/~m6kvm/twitch-tag-mp3';
 
 has 'jobs'      => (is => 'ro', isa => 'Int',  default => 1);
+has 'json'      => (is => 'ro', isa => 'Bool', default => 0);
 has 'noop'      => (is => 'ro', isa => 'Bool', default => 0);
 has 'recursive' => (is => 'ro', isa => 'Bool', default => 0);
 has 'verbose'   => (is => 'ro', isa => 'Bool', default => 0);
@@ -105,7 +107,13 @@ sub _collect {
 
 sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 	my ($self, $msg) = @_;
-	print "$msg\n" if ($self->verbose);
+	if ($self->verbose) {
+		if ($self->json) {
+			print encode_json({message => $msg}) . "\n";
+		} else {
+			print "$msg\n";
+		}
+	}
 	return;
 }
 
