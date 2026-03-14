@@ -286,6 +286,7 @@ sub parseFileName {
 			$artist = join(' ', map { ucfirst(lc($_)) } @words);
 		}
 
+		$artist = fixWorldSuffix($artist);
 		$artist =~ s/\b([a-z])/uc($1)/ge;
 		$artist = fixConjunctions($artist);
 
@@ -309,6 +310,12 @@ sub parseFileName {
 	}
 
 	die("Cannot parse filename structure: '$filename'");
+}
+
+sub fixWorldSuffix {
+	my ($artist) = @_;
+	$artist =~ s/(\S)(world)$/$1 $2/i;
+	return $artist;
 }
 
 sub fixConjunctions {
