@@ -290,6 +290,7 @@ sub parseFileName {
 		$artist =~ s/\b([a-z])/uc($1)/ge;
 		$artist = fixConjunctions($artist);
 
+		$artist = 'DJ DNA' if ($artist eq 'Dna');
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
