@@ -294,6 +294,7 @@ sub parseFileName {
 		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 		$artist = 'HANAWINS' if ($artist eq 'Hanawins');
 		$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+		$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
 		$artist = 'Fraser Binnie' if (lc($artistRaw) eq 'fraserbinnie');
 		$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
 		$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
