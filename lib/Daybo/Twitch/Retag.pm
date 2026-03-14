@@ -300,6 +300,7 @@ sub parseFileName {
 		$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
 		$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
 		$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
+		$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
 		$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
 		$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
 		$artist = $artistRaw if ($artistRaw =~ /TV$/);
