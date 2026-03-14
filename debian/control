@@ -12,6 +12,7 @@ Package: twitch-tag-mp3
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends},
  id3v2,
+ libipc-run3-perl,
  libmoose-perl,
  libsys-cpu-perl
 Description: Perl program for ID3 tagging Twitch MP3 files
