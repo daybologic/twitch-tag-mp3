@@ -292,7 +292,8 @@ sub parseFileName {
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 		$artist = 'HANAWINS' if ($artist eq 'Hanawins');
-		$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+		$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+		$artist = 'FaBiESto'     if ($artistRaw eq 'FaBiESto');
 		$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 		$track = "$artist $date ${hh}:${mm}:00";
