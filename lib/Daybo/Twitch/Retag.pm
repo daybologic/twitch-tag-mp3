@@ -269,6 +269,8 @@ sub tagPerProcess {
 	$self->logTagChanges($pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
+	my $gid = (stat($file))[5];
+
 	return if ($self->noop);
 
 	__system('id3v2', '--delete-all', $file);
@@ -281,6 +283,8 @@ sub tagPerProcess {
 		'--comment', $comment,
 		$file,
 	);
+
+	chown(-1, $gid, $file) if (defined($gid));
 
 	return;
 }
