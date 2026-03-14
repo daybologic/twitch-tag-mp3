@@ -187,7 +187,7 @@ sub logTagChanges {
 
 	my %changeLog = (
 		process => {
-			name => 'changelog',
+			type => 'changelog',
 			pct => $pct,
 			pid => $PID,
 		},
@@ -227,7 +227,7 @@ sub tagPerProcess {
 	if ($self->json) {
 		$self->log({
 			process => {
-				name => 'tag',
+				type => 'tag',
 				pct => $pct,
 				pid => $PID,
 			},
