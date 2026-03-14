@@ -281,7 +281,7 @@ sub parseFileName {
 		$artist =~ s/\s*$//;
 		$artist =~ s/^\s*//;
 
-		if ($artist =~ /^[A-Z]{2,}/ || $artist =~ /[a-z][A-Z]/) {
+		if ($artist =~ /^[A-Z]{3,}/ || $artist =~ /[a-z][A-Z]/) {
 			my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
 			$artist = join(' ', map { ucfirst(lc($_)) } @words);
 		}
