@@ -185,6 +185,15 @@ sub readTags {
 sub logTagChanges {
 	my ($self, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
+	my %changeLog = (
+		process => {
+			name => 'changelog',
+			pct => $pct,
+			pid => $PID,
+		},
+		changes => [ ],
+	);
+
 	for my $f (['artist',  $existing->{artist},  $artist],
 	           ['album',   $existing->{album},   $album],
 	           ['track',   $existing->{track},   $track],
@@ -195,22 +204,18 @@ sub logTagChanges {
 		$old //= '';
 		if ($old ne $new) {
 			if ($self->json) {
-				$self->log({
-					process => {
-						pct => $pct,
-						pid => $PID,
-					},
-					changes => {
-						field => $name,
-						old => $old,
-						new => $new,
-					}, # TODO: can we write this as one log line?  Including on non-JSON mode?  changes perhaps being an ARRAY?
+				push(@{ $changeLog{changes} }, {
+					field => $name,
+					old => $old,
+					new => $new,
 				});
 			} else {
 				$self->log(sprintf('[%d%%] %s: "%s" -> "%s"', $pct, $name, $old, $new))
 			}
 		}
 	}
+
+	$self->log(\%changeLog) if ($self->json);
 
 	return;
 }
@@ -222,6 +227,7 @@ sub tagPerProcess {
 	if ($self->json) {
 		$self->log({
 			process => {
+				name => 'tag',
 				pct => $pct,
 				pid => $PID,
 			},
