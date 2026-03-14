@@ -284,7 +284,9 @@ sub tagPerProcess {
 		$file,
 	);
 
-	chown(-1, $gid, $file) if (defined($gid));
+	if (defined($gid)) {
+		chown(-1, $gid, $file) or die("Cannot restore GID $gid on '$file': $ERRNO");
+	}
 
 	return;
 }
