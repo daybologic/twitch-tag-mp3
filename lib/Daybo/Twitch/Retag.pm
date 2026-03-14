@@ -185,14 +185,20 @@ sub readTags {
 sub logTagChanges {
 	my ($self, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
-	my %changeLog = (
-		process => {
-			type => 'changelog',
-			pct => $pct,
-			pid => $PID,
-		},
-		changes => [ ],
-	);
+	my (%JSON_changeLog, $plain_changeLog);
+
+	if ($self->json) {
+		%JSON_changeLog = (
+			process => {
+				type => 'changelog',
+				pct => $pct,
+				pid => $PID,
+			},
+			changes => [ ],
+		);
+	} else {
+		$plain_changeLog = sprintf('[%d%%]: ', $pct);
+	}
 
 	for my $f (['artist',  $existing->{artist},  $artist],
 	           ['album',   $existing->{album},   $album],
@@ -204,18 +210,22 @@ sub logTagChanges {
 		$old //= '';
 		if ($old ne $new) {
 			if ($self->json) {
-				push(@{ $changeLog{changes} }, {
+				push(@{ $JSON_changeLog{changes} }, {
 					field => $name,
 					old => $old,
 					new => $new,
 				});
 			} else {
-				$self->log(sprintf('[%d%%] %s: "%s" -> "%s"', $pct, $name, $old, $new))
+				$plain_changeLog .= "$name: \"$old\" -> \"$new\", ";
 			}
 		}
 	}
 
-	$self->log(\%changeLog) if ($self->json);
+	if ($self->json) {
+		$self->log(\%JSON_changeLog);
+	} else {
+		$self->log($plain_changeLog);
+	}
 
 	return;
 }
