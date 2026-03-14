@@ -269,6 +269,11 @@ sub tagPerProcess {
 	$self->logTagChanges($pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
+	my @stat = stat($file)
+	    or die("Cannot stat '$file': $ERRNO");
+
+	my $gid = $stat[5];
+
 	return if ($self->noop);
 
 	__system('id3v2', '--delete-all', $file);
@@ -281,6 +286,9 @@ sub tagPerProcess {
 		'--comment', $comment,
 		$file,
 	);
+
+	chown(-1, $gid, $file) == 1
+	    or die("Cannot restore GID $gid on '$file': $ERRNO");
 
 	return;
 }
