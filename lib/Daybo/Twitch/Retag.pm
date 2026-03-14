@@ -287,6 +287,7 @@ sub parseFileName {
 		}
 
 		$artist =~ s/\b([a-z])/uc($1)/ge;
+		$artist = fixConjunctions($artist);
 
 		$artist = 'DJ Edit' if ($artist eq 'Edit');
 		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
@@ -306,6 +307,16 @@ sub parseFileName {
 	}
 
 	die("Cannot parse filename structure: '$filename'");
+}
+
+sub fixConjunctions {
+	my ($artist) = @_;
+	my @words = split(/\s+/, $artist);
+	return $artist if (@words <= 2);
+	for my $i (1 .. $#words - 1) {
+		$words[$i] = lc($words[$i]) if ($words[$i] =~ /^(?:on|and|or)$/i);
+	}
+	return join(' ', @words);
 }
 
 sub acceptableDirName {
