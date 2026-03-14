@@ -37,7 +37,7 @@ use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Moose;
 
-our $VERSION = '0.3.0';
+our $VERSION = '0.4.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 

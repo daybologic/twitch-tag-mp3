@@ -1,3 +1,23 @@
+twitch-tag-mp3 (0.4.0) trixie; urgency=medium
+
+  * Add --json/-J flag to emit all log output as newline-delimited JSON.
+  * Skip writing ID3 tags when all fields are already up to date.
+  * Log each changed tag field with old and new value before rewriting.
+  * Preserve original GID of MP3 files after writing tags; die if GID
+    cannot be restored.
+  * Add artist name mappings: HANAWINS, FaBiESto, A_D_A_M_S_K_I, Fraser
+    Binnie, XiJaro & Pitch, Bugi, Ferry Corsten, Noemi Black, Stoneface &
+    Terminal, DJ DNA.
+  * Lowercase conjunctions (on/and/or) in middle words of artist names.
+  * Split trailing 'world' into a separate word in artist names.
+  * Fix camelCase splitting to avoid incorrectly splitting NViolent.
+  * Include COMM tag in unchanged-tags check and change logging.
+  * Strip ()[lang]: prefix from COMM frame when reading via id3v2 -l.
+  * Remove $URL from COMM tag value.
+  * Add missing libipc-run3-perl Debian dependency.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Fri, 14 Mar 2026 18:50:00 +0000
+
 twitch-tag-mp3 (0.3.0) trixie; urgency=medium
 
   * Add --directory/-d and --jobs/-j command-line flags.
