@@ -72,7 +72,7 @@ function copyFiles {
 		"leejtranzalitystudios (live) 2021-08-26 19_01-43077611596"
 		"Sarah_L_C (live) 2021-06-25_MP3WRAP-desilence"
 		"SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence"
-		"swearyprincess (live) 2022-08-04 20_07-45869356460-desilence.mp3"
+		"swearyprincess (live) 2022-08-04 20_07-45869356460-desilence"
 		"Ucron (live) 2022-10-17 00_06-40358894505-desilence"
 	)
 
