@@ -105,7 +105,7 @@ checkFile "SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence.mp3" \
 	"Sotchi Riot 2022-05-28 16:17:00 45482207596" \
 	"2022"
 
-checkFile "swearyprincess (live) 2022-08-04 20_07-45869356460-desilence.mp3.mp3" \
+checkFile "swearyprincess (live) 2022-08-04 20_07-45869356460-desilence.mp3" \
 	"Swearyprincess" \
 	"Swearyprincess on Twitch" \
 	"Swearyprincess 2022-08-04 20:07:00 45869356460" \
