@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Twitch MP3 tagger.
+# Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#
+#     * Neither the name of the the maintainer, nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+set -euo pipefail
+
+. inc/setUp.sh
+
+perl "-I${LIBDIR}" "${EXE}" -d "${rootDir}" --noop
+
+COMMENT=""
+
+check() {
+	local field="$1" expected="$2" actual="$3"
+	if [[ "$actual" != "$expected" ]]; then
+		echo "FAIL $field: expected \"$expected\", got \"$actual\""
+		exit 2
+	fi
+	echo "OK $field: $actual"
+}
+
+# TODO move check and possible checkFile to shared code
+checkFile() {
+	local file="$1" exp_artist="$2" exp_album="$3" exp_track="$4" exp_year="$5"
+	local artist='' album='' track='' year='' comment=''
+
+	echo "--- $file ---"
+	eval "$(
+	id3v2 --list-rfc822 "${rootDir}/${file}" |
+	awk -F': ' '
+	$1=="TPE1" {print "artist=\"" $2 "\""}
+	$1=="TALB" {print "album=\"" $2 "\""}
+	$1=="TIT2" {print "track=\"" $2 "\""}
+	$1=="TYER" {print "year=\"" $2 "\""}
+	$1=="COMM" {val=$0; sub(/^COMM[^:]*: /, "", val); sub(/^\([^)]*\)\[[^\]]*\]: ?/, "", val); print "comment=\"" val "\""}
+	'
+	)"
+
+	check artist  "$exp_artist"  "$artist"
+	check album   "$exp_album"   "$album"
+	check track   "$exp_track"   "$track"
+	check year    "$exp_year"    "$year"
+	check comment "$COMMENT"     "$comment"
+}
+
+checkFile "JohnnyEOfficial (live) 2022-03-17 20_31-45879430669-desilence.mp3" "" "" "" ""
+
+checkFile "JenniferRenePlays (live) 2022-03-17 00_12-45870468605.mp3" "" "" "" ""
+
+checkFile "LeeJOfficial (live) 2022-04-07 20_00-45169276284-desilence.mp3" "" "" "" ""
+
+checkFile "leejtranzalitystudios (live) 2021-08-26 19_01-43077611596.mp3" "" "" "" ""
+
+checkFile "Sarah_L_C (live) 2021-06-25_MP3WRAP-desilence.mp3" "" "" "" ""
+
+checkFile "SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence.mp3" "" "" "" ""
+
+checkFile "swearyprincess (live) 2022-08-04 20_07-45869356460-desilence.mp3" "" "" "" ""
+
+checkFile "Ucron (live) 2022-10-17 00_06-40358894505-desilence.mp3" "" "" "" ""
+
+exit 0
