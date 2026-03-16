@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env bash
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,73 +29,79 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
+set -u # strict on undefined vars, but no `-e`
 
-eval {
-	import Sys::CPU;
-};
+BASE_DIR="tt"
 
-use ExtUtils::MakeMaker;
+failures=()
+total=0
+passed=0
+failed=0
+skipped=0
+notApplicable=0
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+# Ensure directory exists
+if [[ ! -d "$BASE_DIR" ]]; then
+	echo "⚠️ Directory '$BASE_DIR' does not exist." >&2
+	exit 0
+fi
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
+# Find and execute .sh files
+while IFS= read -r -d '' script; do
+	(( total++ ))
 
-        PREREQ_PM => {
-                'IPC::Run3' => 0,
-                'Moose'     => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
+	testName="${script#$BASE_DIR}"
 
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
-);
+	if [[ "$testName" =~ "run-tests.sh" ]]; then
+		(( notApplicable++ ))
 
-package MY;
-use strict;
-use warnings;
+		echo "☑️     N/A: $testName"
+	elif [ -x "$script" ]; then
+		# Run the script in a subshell, so "exit" doesn’t kill the runner
+		(
+			"$script" >/dev/null 2>&1
+		) < /dev/null # <-- critical fix: prevent script from reading find's output
+		status=$?
 
-sub test {
-	my $inherited = shift;
+		if [[ $status -eq 0 ]]; then
+			(( passed++ ))
 
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
+			echo "✅ PASSED: $testName"
+		else
+			(( failed++ ))
 
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
+			echo "❌ FAILED (exit $status): $testName"
+			failures+=("$testName (exit $status)")
+		fi
+	else
+		(( skipped++ ))
 
-	return $inherited;
-}
+		echo "⚠️ SKIPPED: $testName"
+	fi
+done < <(find "$BASE_DIR" -maxdepth 1 -name "*.sh" -type f -print0)
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+echo "================================"
+if (( failed > 0 )); then
+	echo "Some tests failed:"
+	for f in "${failures[@]}"; do
+		echo " - $f"
+	done
+else
+	echo "All tests passed successfully 🎉"
+fi
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
+# Final summary
+echo "================================"
+echo "Test Summary:"
+echo "  Total  : $total"
+echo "✅ Passed : $passed"
+echo "☑️    N/A : $notApplicable"
+echo "⚠️Skipped: $skipped"
+echo "❌ Failed : $failed"
+echo
 
-check :: pure_all
-	@tt/run-tests.sh
+if (( failed > 0 )); then
+	exit 1
+fi
 
-clean :: 
-	rm -rf cover_db
-
-# Extend test target
-test :: check
-
-    ~;
-}
-
-1;
+exit 0
