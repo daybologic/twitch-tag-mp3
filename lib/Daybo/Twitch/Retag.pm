@@ -36,16 +36,16 @@ use IO::Dir;
 use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Moose;
+use POSIX qw(EXIT_SUCCESS);
 
 our $VERSION = '0.4.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
-has 'jobs'      => (is => 'ro', isa => 'Int',  default => 1);
-has 'json'      => (is => 'ro', isa => 'Bool', default => 0);
-has 'noop'      => (is => 'ro', isa => 'Bool', default => 0);
-has 'recursive' => (is => 'ro', isa => 'Bool', default => 0);
-has 'verbose'   => (is => 'ro', isa => 'Bool', default => 0);
+has jobs => (is => 'ro', isa => 'Int',  default => 1);
+
+has [qw(json noop recursive verbose)]
+    => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
 
@@ -56,7 +56,7 @@ sub run {
 	my @files = $self->_collect($dirname);
 	my $total  = scalar(@files);
 
-	for my $i (0 .. $#files) {
+	foreach my $i (0 .. $#files) {
 		my ($relPath, $filename) = @{ $files[$i] };
 		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
 		$self->log("Tagging $relPath");
@@ -70,9 +70,10 @@ sub run {
 	foreach my $pid (@pids) {
 		waitpid($pid, 0);
 	}
+
 	@pids = ();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 sub _collect {
@@ -88,15 +89,16 @@ sub _collect {
 		my $relPath = $dirname . '/' . $filename;
 
 		if (-d $relPath) {
-			push(@files, $self->_collect($relPath))
-				if ($self->recursive && acceptableDirName($filename));
+			if ($self->recursive && acceptableDirName($filename)) {
+				push(@files, $self->_collect($relPath))
+			}
 		} elsif (open(my $fh, '<', $relPath)) {
 			my $ext = getExt($filename);
 			close($fh);
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [$relPath, $filename]);
+				push(@files, [ $relPath, $filename ]);
 			}
 		}
 	}
@@ -133,11 +135,8 @@ sub isMp3 {
 
 sub getExt {
 	my ($fn) = @_;
-	my @arr;
-	my $ext;
-
-	@arr = split(m/\./, $fn);
-	$ext = $arr[scalar(@arr)-1];
+	my @arr = split(m/\./, $fn);
+	my $ext = $arr[ scalar(@arr) - 1 ];
 	return if ($fn eq $ext);
 	return $ext;
 }
@@ -156,9 +155,9 @@ sub tag {
 	if ($pid) { # parent
 		push(@pids, $pid);
 	} else { # child
-		local $0 = sprintf("tagging '%s'", $file);
+		local $PROGRAM_NAME = sprintf("tagging '%s'", $file);
 		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 	return;
@@ -166,20 +165,37 @@ sub tag {
 
 sub readTags {
 	my ($file) = @_;
-	my %tags;
 
-	open(my $fh, '-|', 'id3v2', '-l', $file) or return;
-	while (my $line = <$fh>) {
-		chomp $line;
-		if    ($line =~ /^TPE1[^:]+:\s*(.+)$/) { $tags{artist} = $1 }
-		elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) { $tags{album}  = $1 }
-		elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) { $tags{track}  = $1 }
-		elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) { $tags{year}    = $1 }
-		elsif ($line =~ /^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/) { $tags{comment} = $1 }
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+
+	my %tags;
+	while (my $line = <$fh>) {  # TODO: use IO::File
+		parseTag(\%tags, $line);
 	}
 	close($fh);
 
 	return %tags ? \%tags : undef;
+}
+
+sub parseTag {
+	my ($tags, $line) = @_;
+
+	chomp($line);
+
+	# TODO: can we re-write this as a key -> rx map?
+	if ($line =~ /^TPE1[^:]+:\s*(.+)$/) {
+		return $tags->{artist} = $1;
+	} elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) {
+		return $tags->{album} = $1;
+	} elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) {
+		return $tags->{track} = $1;
+	} elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) {
+		return $tags->{year} = $1;
+	} elsif ($line =~ /^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/) {
+		return $tags->{comment} = $1;
+	}
+
+	return;
 }
 
 sub logTagChanges {
@@ -200,12 +216,13 @@ sub logTagChanges {
 		$plain_changeLog = sprintf('[%d%%]: ', $pct);
 	}
 
-	for my $f (['artist',  $existing->{artist},  $artist],
-	           ['album',   $existing->{album},   $album],
-	           ['track',   $existing->{track},   $track],
-	           ['year',    $existing->{year},    $year],
-	           ['comment', $existing->{comment}, $comment])
-	{
+	foreach my $f (
+		['artist',  $existing->{artist},  $artist],
+		['album',   $existing->{album},   $album],
+		['track',   $existing->{track},   $track],
+		['year',    $existing->{year},    $year],
+		['comment', $existing->{comment}, $comment],
+	) {
 		my ($name, $old, $new) = @{$f};
 		$old //= '';
 		if ($old ne $new) {
@@ -260,8 +277,8 @@ sub tagPerProcess {
 	    && ($existing->{album}   // '') eq $album
 	    && ($existing->{track}   // '') eq $track
 	    && ($existing->{year}    // '') eq $year
-	    && ($existing->{comment} // '') eq $comment)
-	{
+	    && ($existing->{comment} // '') eq $comment
+	) {
 		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
 		return;
 	}
@@ -390,7 +407,7 @@ sub fixConjunctions {
 	my ($artist) = @_;
 	my @words = split(/\s+/, $artist);
 	return $artist if (@words <= 2);
-	for my $i (1 .. $#words - 1) {
+	foreach my $i (1 .. $#words - 1) {
 		$words[$i] = lc($words[$i]) if ($words[$i] =~ /^(?:on|and|or)$/i);
 	}
 	return join(' ', @words);
