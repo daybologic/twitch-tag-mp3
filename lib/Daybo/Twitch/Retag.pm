@@ -33,6 +33,7 @@ package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Spec;
 use IO::Dir;
+use IO::File;
 use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Moose;
@@ -92,9 +93,9 @@ sub _collect {
 			if ($self->recursive && acceptableDirName($filename)) {
 				push(@files, $self->_collect($relPath))
 			}
-		} elsif (open(my $fh, '<', $relPath)) {
+		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = getExt($filename);
-			close($fh);
+			$fh->close();
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
@@ -166,13 +167,14 @@ sub tag {
 sub readTags {
 	my ($file) = @_;
 
-	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+	my $fh = IO::File->new('-|', 'id3v2', '-l', $file);
+	return unless $fh;
 
 	my %tags;
-	while (my $line = <$fh>) {  # TODO: use IO::File
+	while (my $line = <$fh>) {
 		parseTag(\%tags, $line);
 	}
-	close($fh);
+	$fh->close();
 
 	return %tags ? \%tags : undef;
 }
