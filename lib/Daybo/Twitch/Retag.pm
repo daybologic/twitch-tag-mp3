@@ -167,8 +167,7 @@ sub tag {
 sub readTags {
 	my ($file) = @_;
 
-	my $fh = IO::File->new('-|', 'id3v2', '-l', $file);
-	return unless $fh;
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
 
 	my %tags;
 	while (my $line = <$fh>) {
