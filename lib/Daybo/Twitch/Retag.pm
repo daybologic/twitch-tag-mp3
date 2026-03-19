@@ -171,6 +171,7 @@ sub readTags {
 
 	my %tags;
 	while (my $line = <$fh>) {
+		chomp($line);
 		parseTag(\%tags, $line);
 	}
 	$fh->close();
@@ -178,22 +179,24 @@ sub readTags {
 	return %tags ? \%tags : undef;
 }
 
+my %__parsers = ( );
 sub parseTag {
 	my ($tags, $line) = @_;
 
-	chomp($line);
+	if (0 == scalar(keys(%__parsers))) {
+		%__parsers = (
+			artist => qr/^TPE1[^:]+:\s*(.+)$/,
+			album => qr/^TALB[^:]+:\s*(.+)$/,
+			track => qr/^TIT2[^:]+:\s*(.+)$/,
+			year => qr/^TYER[^:]+:\s*(.+)$/,
+			comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
+		);
+	}
 
-	# TODO: can we re-write this as a key -> rx map?
-	if ($line =~ /^TPE1[^:]+:\s*(.+)$/) {
-		return $tags->{artist} = $1;
-	} elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) {
-		return $tags->{album} = $1;
-	} elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) {
-		return $tags->{track} = $1;
-	} elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) {
-		return $tags->{year} = $1;
-	} elsif ($line =~ /^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/) {
-		return $tags->{comment} = $1;
+	while (my ($fieldName, $rx) = each(%__parsers)) {
+		next if ($line !~ $rx);
+		$tags->{$fieldName} = $1;
+		last;
 	}
 
 	return;
