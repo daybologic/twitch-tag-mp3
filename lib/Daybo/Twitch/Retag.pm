@@ -340,9 +340,53 @@ sub __system {
 	return $exitCode;
 }
 
+sub _normalizeArtist {
+	my ($artistRaw) = @_;
+	my $artist = $artistRaw;
+
+	$artist =~ s/Official//gi;
+	$artist =~ s/Music//gi;
+	$artist = 'Raymond Doyle' if ($artist eq 'CarteBlanche88');
+	$artist = 'Taucher' if ($artist =~ m/^taucher66$/i);
+	$artist = 'Kristina Sky' if ($artist eq 'TheRealKristinaSky');
+	$artist = 'Edit' if ($artist eq 'The_Real_DJ_Edit' || $artist eq 'TheReal_DJEdit');
+	$artist = 'Vlastimil' if ($artist =~ m/^vlastimilvibes$/i);
+	$artist =~ s/dj//i;
+	$artist =~ s/_/ /g;
+	$artist =~ s/\s*$//;
+	$artist =~ s/^\s*//;
+
+	if ($artist =~ /^[A-Z]{3,}/ || $artist =~ /[a-z][A-Z]/) {
+		my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
+		$artist = join(' ', map { ucfirst(lc($_)) } @words);
+	}
+
+	$artist = fixWorldSuffix($artist);
+	$artist =~ s/\b([a-z])/uc($1)/ge;
+	$artist = fixConjunctions($artist);
+
+	$artist = 'DJ DNA' if ($artist eq 'Dna');
+	$artist = 'DJ Edit' if ($artist eq 'Edit');
+	$artist = 'DJ Paulo' if ($artist eq 'Paulo');
+	$artist = 'DJ Baedine' if ($artist eq 'Baedine');
+	$artist = 'HANAWINS' if ($artist eq 'Hanawins');
+	$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+	$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
+	$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
+	$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
+	$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
+	$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
+	$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
+	$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+	$artist = $artistRaw if ($artistRaw =~ /TV$/);
+
+	return $artist;
+}
+
 my %__filenameParserContext = ( );
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
+	# Example: '2022-05-30-15-20-01-vlastimilvibes.mp3'
 	my ($filename) = @_;
 
 	if (my $cached = $__filenameParserContext{$filename}) {
@@ -352,48 +396,20 @@ sub parseFileName {
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})(?:\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))?)?/) {
 		my ($date, $year, $hh, $mm) = ($2, $3, $4 // '00', $5 // '00');
 		my $streamId = $6 // $7;
-		my ($artist, $album, $track) = ($1, undef, undef);
-		my $artistRaw = $artist;
+		my $artistRaw = $1;
+		my $artist = _normalizeArtist($artistRaw);
 
-		$artist =~ s/Official//gi;
-		$artist =~ s/Music//gi;
-		$artist = 'Raymond Doyle' if ($artist eq 'CarteBlanche88');
-		$artist = 'Taucher' if ($artist =~ m/^taucher66$/i);
-		$artist = 'Kristina Sky' if ($artist eq 'TheRealKristinaSky');
-		$artist = 'Edit' if ($artist eq 'The_Real_DJ_Edit' || $artist eq 'TheReal_DJEdit');
-		$artist = 'Vlastimil' if ($artist eq 'VlastimilVibes');
-		$artist =~ s/dj//i;
-		$artist =~ s/_/ /g;
-		$artist =~ s/\s*$//;
-		$artist =~ s/^\s*//;
-
-		if ($artist =~ /^[A-Z]{3,}/ || $artist =~ /[a-z][A-Z]/) {
-			my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
-			$artist = join(' ', map { ucfirst(lc($_)) } @words);
-		}
-
-		$artist = fixWorldSuffix($artist);
-		$artist =~ s/\b([a-z])/uc($1)/ge;
-		$artist = fixConjunctions($artist);
-
-		$artist = 'DJ DNA' if ($artist eq 'Dna');
-		$artist = 'DJ Edit' if ($artist eq 'Edit');
-		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
-		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
-		$artist = 'HANAWINS' if ($artist eq 'Hanawins');
-		$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
-		$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
-		$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
-		$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
-		$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
-		$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
-		$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
-		$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
-		$artist = $artistRaw if ($artistRaw =~ /TV$/);
-
-		$track = "$artist $date ${hh}:${mm}:00";
+		my $track = "$artist $date ${hh}:${mm}:00";
 		$track .= " $streamId" if (defined($streamId));
-		$album = "${artist} on Twitch";
+		my $album = "${artist} on Twitch";
+
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
+	} elsif ($filename =~ m/^(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\w+)\.\w+$/) {
+		my ($year, $mon, $day, $hh, $mm, $ss, $artistRaw) = ($1, $2, $3, $4, $5, $6, $7);
+		my $date = "$year-$mon-$day";
+		my $artist = _normalizeArtist($artistRaw);
+		my $track = "$artist $date ${hh}:${mm}:${ss}";
+		my $album = "${artist} on Twitch";
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
