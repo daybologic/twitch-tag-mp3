@@ -117,4 +117,10 @@ checkFile "Ucron (live) 2022-10-17 00_06-40358894505-desilence.mp3" \
 	"Ucron 2022-10-17 00:06:00 40358894505" \
 	"2022"
 
+checkFile "2022-03-30-06-45-01-vlastimilvibes.mp3" \
+	"Vlastimil" \
+	"Vlastimil on Twitch" \
+	"Vlastimil 2022-03-30 06:45:01" \
+	"2022"
+
 exit 0
