@@ -33,19 +33,20 @@ package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Spec;
 use IO::Dir;
+use IO::File;
 use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Moose;
+use POSIX qw(EXIT_SUCCESS);
 
 our $VERSION = '0.4.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
-has 'jobs'      => (is => 'ro', isa => 'Int',  default => 1);
-has 'json'      => (is => 'ro', isa => 'Bool', default => 0);
-has 'noop'      => (is => 'ro', isa => 'Bool', default => 0);
-has 'recursive' => (is => 'ro', isa => 'Bool', default => 0);
-has 'verbose'   => (is => 'ro', isa => 'Bool', default => 0);
+has jobs => (is => 'ro', isa => 'Int',  default => 1);
+
+has [qw(json noop recursive verbose)]
+    => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
 
@@ -56,7 +57,7 @@ sub run {
 	my @files = $self->_collect($dirname);
 	my $total  = scalar(@files);
 
-	for my $i (0 .. $#files) {
+	foreach my $i (0 .. $#files) {
 		my ($relPath, $filename) = @{ $files[$i] };
 		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
 		$self->log("Tagging $relPath");
@@ -70,9 +71,10 @@ sub run {
 	foreach my $pid (@pids) {
 		waitpid($pid, 0);
 	}
+
 	@pids = ();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 sub _collect {
@@ -88,15 +90,16 @@ sub _collect {
 		my $relPath = $dirname . '/' . $filename;
 
 		if (-d $relPath) {
-			push(@files, $self->_collect($relPath))
-				if ($self->recursive && acceptableDirName($filename));
-		} elsif (open(my $fh, '<', $relPath)) {
+			if ($self->recursive && acceptableDirName($filename)) {
+				push(@files, $self->_collect($relPath))
+			}
+		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = getExt($filename);
-			close($fh);
+			$fh->close();
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [$relPath, $filename]);
+				push(@files, [ $relPath, $filename ]);
 			}
 		}
 	}
@@ -133,11 +136,8 @@ sub isMp3 {
 
 sub getExt {
 	my ($fn) = @_;
-	my @arr;
-	my $ext;
-
-	@arr = split(m/\./, $fn);
-	$ext = $arr[scalar(@arr)-1];
+	my @arr = split(m/\./, $fn);
+	my $ext = $arr[ scalar(@arr) - 1 ];
 	return if ($fn eq $ext);
 	return $ext;
 }
@@ -156,9 +156,9 @@ sub tag {
 	if ($pid) { # parent
 		push(@pids, $pid);
 	} else { # child
-		local $0 = sprintf("tagging '%s'", $file);
+		local $PROGRAM_NAME = sprintf("tagging '%s'", $file);
 		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 	return;
@@ -166,20 +166,40 @@ sub tag {
 
 sub readTags {
 	my ($file) = @_;
-	my %tags;
 
-	open(my $fh, '-|', 'id3v2', '-l', $file) or return;
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+
+	my %tags;
 	while (my $line = <$fh>) {
-		chomp $line;
-		if    ($line =~ /^TPE1[^:]+:\s*(.+)$/) { $tags{artist} = $1 }
-		elsif ($line =~ /^TALB[^:]+:\s*(.+)$/) { $tags{album}  = $1 }
-		elsif ($line =~ /^TIT2[^:]+:\s*(.+)$/) { $tags{track}  = $1 }
-		elsif ($line =~ /^TYER[^:]+:\s*(.+)$/) { $tags{year}    = $1 }
-		elsif ($line =~ /^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/) { $tags{comment} = $1 }
+		chomp($line);
+		parseTag(\%tags, $line);
 	}
-	close($fh);
+	$fh->close();
 
 	return %tags ? \%tags : undef;
+}
+
+my %__parsers = ( );
+sub parseTag {
+	my ($tags, $line) = @_;
+
+	if (0 == scalar(keys(%__parsers))) {
+		%__parsers = (
+			artist => qr/^TPE1[^:]+:\s*(.+)$/,
+			album => qr/^TALB[^:]+:\s*(.+)$/,
+			track => qr/^TIT2[^:]+:\s*(.+)$/,
+			year => qr/^TYER[^:]+:\s*(.+)$/,
+			comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
+		);
+	}
+
+	while (my ($fieldName, $rx) = each(%__parsers)) {
+		next if ($line !~ $rx);
+		$tags->{$fieldName} = $1;
+		last;
+	}
+
+	return;
 }
 
 sub logTagChanges {
@@ -200,12 +220,13 @@ sub logTagChanges {
 		$plain_changeLog = sprintf('[%d%%]: ', $pct);
 	}
 
-	for my $f (['artist',  $existing->{artist},  $artist],
-	           ['album',   $existing->{album},   $album],
-	           ['track',   $existing->{track},   $track],
-	           ['year',    $existing->{year},    $year],
-	           ['comment', $existing->{comment}, $comment])
-	{
+	foreach my $f (
+		['artist',  $existing->{artist},  $artist],
+		['album',   $existing->{album},   $album],
+		['track',   $existing->{track},   $track],
+		['year',    $existing->{year},    $year],
+		['comment', $existing->{comment}, $comment],
+	) {
 		my ($name, $old, $new) = @{$f};
 		$old //= '';
 		if ($old ne $new) {
@@ -260,8 +281,8 @@ sub tagPerProcess {
 	    && ($existing->{album}   // '') eq $album
 	    && ($existing->{track}   // '') eq $track
 	    && ($existing->{year}    // '') eq $year
-	    && ($existing->{comment} // '') eq $comment)
-	{
+	    && ($existing->{comment} // '') eq $comment
+	) {
 		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
 		return;
 	}
@@ -319,9 +340,53 @@ sub __system {
 	return $exitCode;
 }
 
+sub _normalizeArtist {
+	my ($artistRaw) = @_;
+	my $artist = $artistRaw;
+
+	$artist =~ s/Official//gi;
+	$artist =~ s/Music//gi;
+	$artist = 'Raymond Doyle' if ($artist eq 'CarteBlanche88');
+	$artist = 'Taucher' if ($artist =~ m/^taucher66$/i);
+	$artist = 'Kristina Sky' if ($artist eq 'TheRealKristinaSky');
+	$artist = 'Edit' if ($artist eq 'The_Real_DJ_Edit' || $artist eq 'TheReal_DJEdit');
+	$artist = 'Vlastimil' if ($artist =~ m/^vlastimilvibes$/i);
+	$artist =~ s/dj//i;
+	$artist =~ s/_/ /g;
+	$artist =~ s/\s*$//;
+	$artist =~ s/^\s*//;
+
+	if ($artist =~ /^[A-Z]{3,}/ || $artist =~ /[a-z][A-Z]/) {
+		my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
+		$artist = join(' ', map { ucfirst(lc($_)) } @words);
+	}
+
+	$artist = fixWorldSuffix($artist);
+	$artist =~ s/\b([a-z])/uc($1)/ge;
+	$artist = fixConjunctions($artist);
+
+	$artist = 'DJ DNA' if ($artist eq 'Dna');
+	$artist = 'DJ Edit' if ($artist eq 'Edit');
+	$artist = 'DJ Paulo' if ($artist eq 'Paulo');
+	$artist = 'DJ Baedine' if ($artist eq 'Baedine');
+	$artist = 'HANAWINS' if ($artist eq 'Hanawins');
+	$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+	$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
+	$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
+	$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
+	$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
+	$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
+	$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
+	$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+	$artist = $artistRaw if ($artistRaw =~ /TV$/);
+
+	return $artist;
+}
+
 my %__filenameParserContext = ( );
 sub parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
+	# Example: '2022-05-30-15-20-01-vlastimilvibes.mp3'
 	my ($filename) = @_;
 
 	if (my $cached = $__filenameParserContext{$filename}) {
@@ -331,48 +396,20 @@ sub parseFileName {
 	if ($filename =~ m/^(\w+)\s\(\w+\)\s((\d{4})-\d{2}-\d{2})(?:\s(\d{2})_(\d{2})(?:\s\[(\d+)\]|-(\d+))?)?/) {
 		my ($date, $year, $hh, $mm) = ($2, $3, $4 // '00', $5 // '00');
 		my $streamId = $6 // $7;
-		my ($artist, $album, $track) = ($1, undef, undef);
-		my $artistRaw = $artist;
+		my $artistRaw = $1;
+		my $artist = _normalizeArtist($artistRaw);
 
-		$artist =~ s/Official//gi;
-		$artist =~ s/Music//gi;
-		$artist = 'Raymond Doyle' if ($artist eq 'CarteBlanche88');
-		$artist = 'Taucher' if ($artist =~ m/^taucher66$/i);
-		$artist = 'Kristina Sky' if ($artist eq 'TheRealKristinaSky');
-		$artist = 'Edit' if ($artist eq 'The_Real_DJ_Edit' || $artist eq 'TheReal_DJEdit');
-		$artist = 'Vlastimil' if ($artist eq 'VlastimilVibes');
-		$artist =~ s/dj//i;
-		$artist =~ s/_/ /g;
-		$artist =~ s/\s*$//;
-		$artist =~ s/^\s*//;
-
-		if ($artist =~ /^[A-Z]{3,}/ || $artist =~ /[a-z][A-Z]/) {
-			my @words = ($artist =~ /([A-Z][a-z]+|[A-Z]+|[a-z]+|[0-9]+)/g);
-			$artist = join(' ', map { ucfirst(lc($_)) } @words);
-		}
-
-		$artist = fixWorldSuffix($artist);
-		$artist =~ s/\b([a-z])/uc($1)/ge;
-		$artist = fixConjunctions($artist);
-
-		$artist = 'DJ DNA' if ($artist eq 'Dna');
-		$artist = 'DJ Edit' if ($artist eq 'Edit');
-		$artist = 'DJ Paulo' if ($artist eq 'Paulo');
-		$artist = 'DJ Baedine' if ($artist eq 'Baedine');
-		$artist = 'HANAWINS' if ($artist eq 'Hanawins');
-		$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
-		$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
-		$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
-		$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
-		$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
-		$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
-		$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
-		$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
-		$artist = $artistRaw if ($artistRaw =~ /TV$/);
-
-		$track = "$artist $date ${hh}:${mm}:00";
+		my $track = "$artist $date ${hh}:${mm}:00";
 		$track .= " $streamId" if (defined($streamId));
-		$album = "${artist} on Twitch";
+		my $album = "${artist} on Twitch";
+
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
+	} elsif ($filename =~ m/^(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\w+)\.\w+$/) {
+		my ($year, $mon, $day, $hh, $mm, $ss, $artistRaw) = ($1, $2, $3, $4, $5, $6, $7);
+		my $date = "$year-$mon-$day";
+		my $artist = _normalizeArtist($artistRaw);
+		my $track = "$artist $date ${hh}:${mm}:${ss}";
+		my $album = "${artist} on Twitch";
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
@@ -390,7 +427,7 @@ sub fixConjunctions {
 	my ($artist) = @_;
 	my @words = split(/\s+/, $artist);
 	return $artist if (@words <= 2);
-	for my $i (1 .. $#words - 1) {
+	foreach my $i (1 .. $#words - 1) {
 		$words[$i] = lc($words[$i]) if ($words[$i] =~ /^(?:on|and|or)$/i);
 	}
 	return join(' ', @words);

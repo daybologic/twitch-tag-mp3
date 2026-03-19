@@ -51,19 +51,19 @@ use lib './lib';
 
 sub main {
 	my $startDir;
-	my $jobs      = 1;
-	my $json      = 0;
-	my $noop      = 0;
+	my $jobs = 1;
+	my $json = 0;
+	my $noop = 0;
 	my $recursive = 0;
-	my $verbose   = 0;
+	my $verbose = 0;
 
 	return EXIT_FAILURE unless (GetOptions(
 		'directory|d=s' => \$startDir,
-		'jobs|j=i'      => \$jobs,
-		'json|J'        => \$json,
-		'noop|n'        => \$noop,
-		'recursive|r'   => \$recursive,
-		'verbose|v'     => \$verbose,
+		'jobs|j=i' => \$jobs,
+		'json|J' => \$json,
+		'noop|n' => \$noop,
+		'recursive|r' => \$recursive,
+		'verbose|v' => \$verbose,
 	));
 
 	if ($jobs < 1) {
