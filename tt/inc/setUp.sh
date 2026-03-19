@@ -74,6 +74,7 @@ function copyFiles {
 		"SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence"
 		"swearyprincess (live) 2022-08-04 20_07-45869356460-desilence"
 		"Ucron (live) 2022-10-17 00_06-40358894505-desilence"
+		"2022-03-30-06-45-01-vlastimilvibes"
 	)
 
 	for fileName in "${filesNames[@]}"; do
