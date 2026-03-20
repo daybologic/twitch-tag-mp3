@@ -45,7 +45,7 @@ our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
 has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
-has [qw(json noop recursive verbose)]
+has [qw(force json noop recursive verbose)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
@@ -206,6 +206,7 @@ sub logTagChanges {
 	my ($self, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
 	my (%JSON_changeLog, $plain_changeLog);
+	my $changeCount = 0;
 
 	if ($self->json) {
 		%JSON_changeLog = (
@@ -230,6 +231,7 @@ sub logTagChanges {
 		my ($name, $old, $new) = @{$f};
 		$old //= '';
 		if ($old ne $new) {
+			$changeCount++;
 			if ($self->json) {
 				push(@{ $JSON_changeLog{changes} }, {
 					field => $name,
@@ -243,8 +245,12 @@ sub logTagChanges {
 	}
 
 	if ($self->json) {
+		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
+		    if ($changeCount == 0);
 		$self->log(\%JSON_changeLog);
 	} else {
+		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forced rewrite', $pct)
+		    if ($changeCount == 0);
 		$self->log($plain_changeLog);
 	}
 
@@ -276,7 +282,8 @@ sub tagPerProcess {
 	}
 
 	my $existing = readTags($file);
-	if ($existing
+	if (!$self->force
+	    && $existing
 	    && ($existing->{artist}  // '') eq $artist
 	    && ($existing->{album}   // '') eq $album
 	    && ($existing->{track}   // '') eq $track
@@ -365,19 +372,28 @@ sub _normalizeArtist {
 	$artist =~ s/\b([a-z])/uc($1)/ge;
 	$artist = fixConjunctions($artist);
 
+	$artist = 'DJ Chopper' if ($artistRaw eq 'djChopper');
 	$artist = 'DJ DNA' if ($artist eq 'Dna');
 	$artist = 'DJ Edit' if ($artist eq 'Edit');
 	$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 	$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 	$artist = 'HANAWINS' if ($artist eq 'Hanawins');
-	$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+	$artist = 'A D A M S K I' if ($artistRaw eq 'A_D_A_M_S_K_I');
 	$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
+	$artist = 'ReOrder' if ($artistRaw eq 'ReOrderDJ');
+	$artist = 'Rob Kidd' if ($artist =~ m/^robkidd/i);
+	$artist = 'Ryan Moon' if ($artist =~ m/^ryanmoon/i);
+	$artist = 'Mark Sherry' if ($artistRaw =~ m/^marksherrydj$/i);
+	$artist = 'Markus Schulz' if ($artistRaw =~ m/^markusschulz$/i);
 	$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
 	$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
 	$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
 	$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
 	$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
 	$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+	$artist = $artistRaw if ($artistRaw eq 'Music4ThaMasses');
+	$artist = $artistRaw if ($artistRaw eq 'RaZoR368');
+	$artist = lc($artistRaw) if ($artistRaw =~ m/^tkkttony$/i);
 	$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 	return $artist;
@@ -420,6 +436,7 @@ sub parseFileName {
 sub fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
+	$artist =~ s/ Uk$/ UK/i;
 	return $artist;
 }
 
