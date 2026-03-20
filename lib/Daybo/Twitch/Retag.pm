@@ -377,14 +377,22 @@ sub _normalizeArtist {
 	$artist = 'DJ Paulo' if ($artist eq 'Paulo');
 	$artist = 'DJ Baedine' if ($artist eq 'Baedine');
 	$artist = 'HANAWINS' if ($artist eq 'Hanawins');
-	$artist = 'A_D_A_M_S_K_I' if ($artistRaw eq 'A_D_A_M_S_K_I');
+	$artist = 'A D A M S K I' if ($artistRaw eq 'A_D_A_M_S_K_I');
 	$artist = 'Bugi' if ($artistRaw eq 'xX_Bugi_Xx');
+	$artist = 'ReOrder' if ($artistRaw eq 'ReOrderDJ');
+	$artist = 'Rob Kidd' if ($artist =~ m/^robkidd/i);
+	$artist = 'Ryan Moon' if ($artist =~ m/^ryanmoon/i);
+	$artist = 'Mark Sherry' if ($artistRaw =~ m/^marksherrydj$/i);
+	$artist = 'Markus Schulz' if ($artistRaw =~ m/^markusschulz$/i);
 	$artist = 'Ferry Corsten' if ($artist =~ m/^ferrycorsten/i);
 	$artist = 'Noemi Black' if ($artist =~ m/^noemiblack/i);
 	$artist = 'Fraser Binnie' if ($artist =~ m/^fraserbinnie/i);
 	$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
 	$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
 	$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+	$artist = $artistRaw if ($artistRaw eq 'Music4ThaMasses');
+	$artist = $artistRaw if ($artistRaw eq 'RaZoR368');
+	$artist = lc($artistRaw) if ($artistRaw =~ m/^tkkttony$/i);
 	$artist = $artistRaw if ($artistRaw =~ /TV$/);
 
 	return $artist;
@@ -427,6 +435,7 @@ sub parseFileName {
 sub fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
+	$artist =~ s/ Uk$/ UK/i;
 	return $artist;
 }
 
