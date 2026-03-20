@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env bash
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,72 +29,59 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
 
-eval {
-	import Sys::CPU;
-};
+set -euo pipefail
 
-use ExtUtils::MakeMaker;
+EXE="../bin/twitch-tag-mp3"
+LIBDIR="../lib"
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+tmpDir=$(mktemp -d)
+rootDir=$(mktemp -d)
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
+function newRIFF {
+	if command -v arecord >/dev/null 2>&1; then
+		arecord -d 2 -f S16_LE -r 44100 "$tmpDir/source.wav"
+	else
+		>&2 'ERROR: 💥 no recognized tools for making RIFF PCM audio files are installed'
+		return 1
+	fi
 
-        PREREQ_PM => {
-                'Moose'    => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
-);
-
-package MY;
-use strict;
-use warnings;
-
-sub test {
-	my $inherited = shift;
-
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
-
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+	return 0
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+source=''
+function RIFF2MP3 {
+	source="$tmpDir/source.mp3"
+	if command -v lame >/dev/null 2>&1; then
+		lame "$tmpDir/source.wav" "$source"
+	elif command -v bladeenc >/dev/null 2>&1; then
+		bladeenc "$tmpDir/source.wav" "$source"
+	else
+		>&2 'ERROR: 💥 no recognized tools for making MPEG II level III files are installed'
+		return 1
+	fi
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
-
-check :: pure_all
-	@tt/run-tests.sh
-
-clean :: 
-	rm -rf cover_db
-
-# Extend test target
-test :: check
-
-    ~;
+	return 0
 }
 
-1;
+function copyFiles {
+	filesNames=(
+		"JohnnyEOfficial (live) 2022-03-17 20_31-45879430669-desilence"
+		"JenniferRenePlays (live) 2022-03-17 00_12-45870468605"
+		"LeeJOfficial (live) 2022-04-07 20_00-45169276284-desilence"
+		"leejtranzalitystudios (live) 2021-08-26 19_01-43077611596"
+		"Sarah_L_C (live) 2021-06-25_MP3WRAP-desilence"
+		"SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence"
+		"swearyprincess (live) 2022-08-04 20_07-45869356460-desilence"
+		"Ucron (live) 2022-10-17 00_06-40358894505-desilence"
+		"2022-03-30-06-45-01-vlastimilvibes"
+	)
+
+	for fileName in "${filesNames[@]}"; do
+		cp "$source" "$rootDir/$fileName.mp3"
+	done
+}
+
+newRIFF
+RIFF2MP3
+copyFiles
