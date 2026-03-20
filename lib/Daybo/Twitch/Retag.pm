@@ -45,7 +45,7 @@ our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
 has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
-has [qw(json noop recursive verbose)]
+has [qw(force json noop recursive verbose)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
@@ -206,6 +206,7 @@ sub logTagChanges {
 	my ($self, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
 	my (%JSON_changeLog, $plain_changeLog);
+	my $changeCount = 0;
 
 	if ($self->json) {
 		%JSON_changeLog = (
@@ -230,6 +231,7 @@ sub logTagChanges {
 		my ($name, $old, $new) = @{$f};
 		$old //= '';
 		if ($old ne $new) {
+			$changeCount++;
 			if ($self->json) {
 				push(@{ $JSON_changeLog{changes} }, {
 					field => $name,
@@ -243,8 +245,12 @@ sub logTagChanges {
 	}
 
 	if ($self->json) {
+		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
+		    if ($changeCount == 0);
 		$self->log(\%JSON_changeLog);
 	} else {
+		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forced rewrite', $pct)
+		    if ($changeCount == 0);
 		$self->log($plain_changeLog);
 	}
 
@@ -276,7 +282,8 @@ sub tagPerProcess {
 	}
 
 	my $existing = readTags($file);
-	if ($existing
+	if (!$self->force
+	    && $existing
 	    && ($existing->{artist}  // '') eq $artist
 	    && ($existing->{album}   // '') eq $album
 	    && ($existing->{track}   // '') eq $track
