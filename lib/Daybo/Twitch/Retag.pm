@@ -365,6 +365,7 @@ sub _normalizeArtist {
 	$artist =~ s/\b([a-z])/uc($1)/ge;
 	$artist = fixConjunctions($artist);
 
+	$artist = 'DJ Chopper' if ($artistRaw eq 'djChopper');
 	$artist = 'DJ DNA' if ($artist eq 'Dna');
 	$artist = 'DJ Edit' if ($artist eq 'Edit');
 	$artist = 'DJ Paulo' if ($artist eq 'Paulo');
