@@ -45,7 +45,7 @@ our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
 has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
-has [qw(json noop recursive verbose)]
+has [qw(force json noop recursive verbose)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
 my @pids;
@@ -276,7 +276,8 @@ sub tagPerProcess {
 	}
 
 	my $existing = readTags($file);
-	if ($existing
+	if (!$self->force
+	    && $existing
 	    && ($existing->{artist}  // '') eq $artist
 	    && ($existing->{album}   // '') eq $album
 	    && ($existing->{track}   // '') eq $track
