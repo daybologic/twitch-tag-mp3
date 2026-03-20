@@ -424,7 +424,7 @@ sub parseFileName {
 sub fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
-	$artist =~ s/ Uk$/ UK/;
+	$artist =~ s/ Uk$/ UK/i;
 	return $artist;
 }
 
