@@ -1,13 +1,17 @@
 Usage:
 
-	twitch-tag-mp3 --directory|-d <DIR> [--noop|-n] [--verbose|-v] [--recursive|-r] [--json|-J] [--jobs|-j] <N>
+	twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose]
+	twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v]
 
 Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
 
-Pass --noop to preview the tags which would be written without modifying any files.
-Pass --verbose to see verbose progress and tag information
+Pass --force to rewrite tags even when already up to date.
+Pass --help to display this usage information and exit.
 Pass --jobs to allow parallel I/O (default 1)
 Pass --json if you want structured output for front-end processing
+Pass --noop to preview the tags which would be written without modifying any files.
+Pass --recursive to descend into subdirectories.
+Pass --verbose to see verbose progress and tag information
 
 Dependencies:
 
