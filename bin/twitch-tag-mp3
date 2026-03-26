@@ -33,8 +33,8 @@
 
 Usage:
 
-	twitch-tag-mp3 --directory <DIR> [--jobs <N>] [--json] [--recursive] [--verbose] [--noop] [--force]
-	twitch-tag-mp3 -d <DIR> [-j <N>] [-J] [-r] [-v] [-n] [-f]
+	twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose]
+	twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v]
 
 Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
 
@@ -46,12 +46,13 @@ use warnings;
 
 use Daybo::Twitch::Retag;
 use Getopt::Long qw(:config no_ignore_case);
-use POSIX qw(EXIT_FAILURE);
+use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use lib './lib';
 
 sub main {
 	my $startDir;
 	my $force = 0;
+	my $help = 0;
 	my $jobs = 1;
 	my $json = 0;
 	my $noop = 0;
@@ -61,6 +62,7 @@ sub main {
 	return EXIT_FAILURE unless (GetOptions(
 		'directory|d=s' => \$startDir,
 		'force|f' => \$force,
+		'help|h' => \$help,
 		'jobs|j=i' => \$jobs,
 		'json|J' => \$json,
 		'noop|n' => \$noop,
@@ -81,6 +83,11 @@ sub main {
 		recursive => $recursive,
 		verbose => $verbose,
 	);
+
+	if ($help) {
+		$retagger->usage();
+		return EXIT_SUCCESS;
+	}
 
 	return $retagger->usage() if (!defined($startDir));
 	return $retagger->run($startDir);
