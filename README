@@ -13,6 +13,15 @@ Pass --noop to preview the tags which would be written without modifying any fil
 Pass --recursive to descend into subdirectories.
 Pass --verbose to see verbose progress and tag information
 
+Experimental features:
+
+	EXPERIMENTAL_PROGRESS=1 twitch-tag-mp3 -d <DIR> ...
+
+Setting the EXPERIMENTAL_PROGRESS environment variable enables size-weighted
+progress percentages.  Instead of advancing by an equal step per file, each
+file contributes weight proportional to its size on disk, so large files move
+the percentage more than small ones.  Feedback welcome.
+
 Dependencies:
 
 	id3v2
