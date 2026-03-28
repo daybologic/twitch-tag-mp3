@@ -39,7 +39,7 @@ use JSON::PP qw(encode_json);
 use Moose;
 use POSIX qw(EXIT_SUCCESS);
 
-our $VERSION = '0.5.0';
+our $VERSION = '0.6.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
