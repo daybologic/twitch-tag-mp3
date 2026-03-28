@@ -1,3 +1,5 @@
+.gitignore
+.pre-commit-config.yaml
 bin/twitch-tag-mp3
 CLAUDE.md
 debian/changelog
@@ -7,7 +9,13 @@ debian/rules
 debian/source/format
 GOOSE_RULES.md
 lib/Daybo/Twitch/Retag.pm
+maint/perlcritic.sh
+maint/run-perlc.sh
+maint/run-perlcritic.sh
+maint/run-podchecker.sh
+maint/run-trap-goose.sh
 maint/trap-goose-corruption.sh
 Makefile.PL
 MANIFEST			This list of files
+MANIFEST.SKIP
 README
