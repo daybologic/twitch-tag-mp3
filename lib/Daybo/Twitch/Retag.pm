@@ -137,8 +137,8 @@ sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 
 sub usage {
 	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
-	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose]\n");
-	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v]\n\n");
+	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
+	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
