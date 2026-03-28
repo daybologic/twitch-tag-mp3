@@ -57,9 +57,22 @@ sub run {
 	my @files = $self->_collect($dirname);
 	my $total  = scalar(@files);
 
+	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
+	my ($total_bytes, $done_bytes);
+	if ($weighted) {
+		$total_bytes += $_->[2] for @files;
+		$done_bytes = 0;
+	}
+
 	foreach my $i (0 .. $#files) {
-		my ($relPath, $filename) = @{ $files[$i] };
-		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		my ($relPath, $filename, $size) = @{ $files[$i] };
+		my $pct;
+		if ($weighted) {
+			$done_bytes += $size;
+			$pct = $total_bytes > 0 ? int($done_bytes / $total_bytes * 100) : 100;
+		} else {
+			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		}
 		$self->log("Tagging $relPath");
 		$self->tag(
 			$relPath,
@@ -99,7 +112,7 @@ sub _collect {
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [ $relPath, $filename ]);
+				push(@files, [ $relPath, $filename, -s $relPath ]);
 			}
 		}
 	}
