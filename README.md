@@ -31,6 +31,8 @@ Files are processed concurrently — one child process per file, up to the limit
 `--jobs` — so large collections tag quickly.  Synology NAS index directories (`@eaDir`) are
 skipped automatically when recursing.
 
+Any feedback on this is welcome.  The author is happy to make reasonable adjustments.
+
 ## Usage
 
 ```
@@ -65,3 +67,28 @@ Feedback welcome.
 ## Dependencies
 
 - [`id3v2`](https://id3v2.sourceforge.net/) — command-line ID3 tagger
+
+## Contributing
+
+### Branch naming scheme
+
+When contributing to the project, please fork from the GitHub repository and make all contributions based on the master branch,
+unless you are specifically patching a bug within an historical release, in which case, branch from the relevant rel/ branch.
+
+Please name your branch using this scheme:
+| branch | description | FF allowed | rebase allowed |
+| ------ | ----------- | ---------- | -------------- |
+| bugfix/&lt;ticket&gt;-&lt;description&gt; | A user bug report, with the ticket number | NO | NO |
+| docs/&lt;description&gt; | Documentation changes _only_ | NO | NO |
+| feature/&lt;description&gt; | New functionality | NO | NO |
+| f/YYYYMM-&lt;description&gt; | Legacy features, please don't create new ones | NO | NO |
+| hotfix/&lt;description&gt; | Emergency fixes only | NO | YES |
+| maint | Maintainer branches (features for developers) | NO | NO |
+| master | Mainline merge point for all features | NO | NO |
+| platform/&lt;uname&gt;/base | Specific changes which can't be merged to master | NO | NO |
+| private/&lt;user-defined&gt; | Undocumented hierarchy, maintainer-use only | YES | YES |
+| rel/X.Y | released 1.0, 2.0, 2.1 etc, which contain specific tags vX.Y.Z | NO | NO |
+| refactor/&lt;description&gt; | Not features, design changes | NO | NO |
+| tests/&lt;description&gt; | Unit tests, functional tests, sanity improvements | NO | NO |
+| translation/&lt;identifier&gt; | Translation work | NO | NO |
+| &lt;user&gt;/&lt;hierarchy&gt; | Your GitHub username, followed by recognized hierarchies above | NO | YES |
