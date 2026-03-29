@@ -62,8 +62,10 @@ sub run {
 		skipped_files  => 0,
 		total_bytes    => 0,
 		modified_bytes => 0,
-		change_count   => 0,
-		start_time     => time(),
+		change_count      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		start_time        => time(),
 		end_time       => 0,
 	});
 
@@ -142,6 +144,9 @@ sub _collect {
 			if (isMp3($ext)) {
 				parseFileName($filename);
 				push(@files, [ $relPath, $filename, -s $relPath ]);
+			} else {
+				$self->_stats->{unqualified_bytes} += -s $relPath;
+				$self->_stats->{unqualified_files}++;
 			}
 		}
 	}
@@ -564,6 +569,8 @@ sub _printStats {
 				total_bytes         => $s->{total_bytes} + 0,
 				modified_bytes      => $s->{modified_bytes} + 0,
 				change_count        => $s->{change_count} + 0,
+				unqualified_bytes   => $s->{unqualified_bytes} + 0,
+				unqualified_files   => $s->{unqualified_files} + 0,
 				elapsed_s           => $elapsed + 0,
 				avg_time_per_file_s => $s->{total_files} > 0 ? $elapsed / $s->{total_files} : 0,
 				avg_time_per_mib_s  => $total_mib > 0 ? $elapsed / $total_mib : 0,
@@ -579,6 +586,8 @@ sub _printStats {
 	$plain .= sprintf("  Total bytes:      %s\n",   _fmtBytes($s->{total_bytes}));
 	$plain .= sprintf("  Modified bytes:   %s\n",   _fmtBytes($s->{modified_bytes}));
 	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
+	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
+	$plain .= sprintf("  Unqualified bytes: %s\n",  _fmtBytes($s->{unqualified_bytes}));
 	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
 	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
 	    if ($s->{total_files} > 0);
