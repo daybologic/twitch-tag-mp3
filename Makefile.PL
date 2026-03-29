@@ -47,7 +47,8 @@ WriteMakefile(
 	NAME         => 'Daybo::Twitch::Retag',
 
         PREREQ_PM => {
-                'Moose'    => 0,
+                'IPC::Run3' => 0,
+                'Moose'     => 0,
 	}, BUILD_REQUIRES => {
 		'Sys::CPU' => 0,
 		#'Moose'           => 0,

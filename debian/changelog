@@ -1,3 +1,29 @@
+twitch-tag-mp3 (0.6.0) trixie; urgency=medium
+
+  * Add --help/-h flag to print usage information and exit.
+  * Add --version/-V flag to print the program version and exit.
+  * Add EXPERIMENTAL_PROGRESS env var: when set, reports file-processing
+    progress as a percentage weighted by file size.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Fri, 28 Mar 2026 00:00:00 +0000
+
+twitch-tag-mp3 (0.5.0) trixie; urgency=medium
+
+  * Add --force/-f flag to rewrite ID3 tags even when all fields are already
+    up to date.
+  * Log 'Tags unchanged, forced rewrite' when --force is given and no fields
+    changed.
+  * Make artist handle matching case-insensitive.
+  * Support YYYY-MM-DD-HH-MM-SS-artist.mp3 filename format.
+  * Fix trailing ' Uk' normalised to ' UK' in artist name suffix handling.
+  * Add artist name mappings: RaZoR368, ReOrder, Ryan Moon, A D A M S K I,
+    Rob Kidd, Mark Sherry, Markus Schulz, Music4ThaMasses, tkkttony,
+    DJ Chopper.
+  * Refactor parseTag to use a hash reference internally.
+  * Replace raw open() with IO::File.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Thu, 20 Mar 2026 00:00:00 +0000
+
 twitch-tag-mp3 (0.4.0) trixie; urgency=medium
 
   * Add --json/-J flag to emit all log output as newline-delimited JSON.

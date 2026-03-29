@@ -3,5 +3,6 @@ blib
 *.orig
 *.swp
 MYMETA.*
+MANIFEST.bak
 Makefile
 .claude/

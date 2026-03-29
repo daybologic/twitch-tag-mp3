@@ -1,0 +1,9 @@
+^\.git/
+^\.claude/
+^Makefile$
+^MYMETA\.
+^blib/
+^pm_to_blib
+\.bak$
+\.swp$
+~$

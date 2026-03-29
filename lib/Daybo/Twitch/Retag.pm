@@ -37,9 +37,9 @@ use IO::File;
 use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Moose;
-use POSIX qw(EXIT_SUCCESS);
+use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 
-our $VERSION = '0.4.0';
+our $VERSION = '0.6.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
@@ -54,12 +54,33 @@ sub run {
 	my ($self, $dirname) = @_;
 
 	$self->log("Walking file tree '$dirname'");
-	my @files = $self->_collect($dirname);
-	my $total  = scalar(@files);
+	my $files = $self->_collect($dirname);
+	if (!ref($files) && $files == -1) {
+		return EXIT_FAILURE;
+	}
 
-	foreach my $i (0 .. $#files) {
-		my ($relPath, $filename) = @{ $files[$i] };
-		my $pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+	my $total = scalar(@$files);
+	if ($total == 0) {
+		$self->log('Nothing to do!');
+		return EXIT_SUCCESS;
+	}
+
+	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
+	my ($total_bytes, $done_bytes);
+	if ($weighted) {
+		$total_bytes += $_->[2] for @$files;
+		$done_bytes = 0;
+	}
+
+	for (my $i = 0; $i < scalar(@$files); $i++) {
+		my ($relPath, $filename, $size) = @{ $files->[$i] };
+		my $pct;
+		if ($weighted) {
+			$done_bytes += $size;
+			$pct = $total_bytes > 0 ? int($done_bytes / $total_bytes * 100) : 100;
+		} else {
+			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		}
 		$self->log("Tagging $relPath");
 		$self->tag(
 			$relPath,
@@ -82,7 +103,10 @@ sub _collect {
 	my @files;
 
 	my $dir = IO::Dir->new($dirname);
-	return () unless ($dir);
+	unless ($dir) {
+		$self->log("Cannot open '$dirname': $ERRNO");
+		return -1;
+	}
 
 	while (defined(my $filename = $dir->read())) {
 		next if ($filename eq '.' || $filename eq '..');
@@ -99,13 +123,13 @@ sub _collect {
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [ $relPath, $filename ]);
+				push(@files, [ $relPath, $filename, -s $relPath ]);
 			}
 		}
 	}
 
 	$dir->close();
-	return @files;
+	return \@files;
 }
 
 sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
@@ -124,8 +148,9 @@ sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
 
 sub usage {
 	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
-	print("twitch-tag-mp3.pl -d <base_dir>\n\n");
-	print("See README for more information, or https://$URL\n");
+	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
+	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
+	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
 
