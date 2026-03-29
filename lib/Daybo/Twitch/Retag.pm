@@ -540,10 +540,11 @@ sub acceptableDirName {
 
 sub _fmtBytes {
 	my ($bytes) = @_;
-	return sprintf('%d bytes', $bytes) if ($bytes < 1024);
-	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes < 1024 * 1024);
-	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes < 1024 * 1024 * 1024);
-	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes);
+	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
+	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
+	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
+	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes >= 1024);
+	return sprintf('%d bytes', $bytes);
 }
 
 sub _printStats {
