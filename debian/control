@@ -9,7 +9,7 @@ Build-Depends-Indep: libsys-cpu-perl,
  libipc-run3-perl,
  libmoose-perl,
  sox
-Standards-Version: 4.7.3
+Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://git.sr.ht/~m6kvm/twitch-tag-mp3
 
