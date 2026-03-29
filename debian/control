@@ -3,7 +3,12 @@ Section: sound
 Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper-compat (= 13)
-Build-Depends-Indep: libsys-cpu-perl
+Build-Depends-Indep: libsys-cpu-perl,
+ id3v2,
+ lame,
+ libipc-run3-perl,
+ libmoose-perl,
+ sox
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://git.sr.ht/~m6kvm/twitch-tag-mp3
