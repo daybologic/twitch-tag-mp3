@@ -1,3 +1,34 @@
+twitch-tag-mp3
+==============
+
+When you record or archive Twitch streams using yt-dlp, you end up with MP3
+files whose names encode everything worth knowing — the streamer, the date,
+the time, the stream ID — but whose ID3 tags are completely blank.  Blank
+tags mean your music player, media server, or NAS cannot sort, browse, or
+display the recordings correctly.
+
+twitch-tag-mp3 fixes that.  It reads the structured filenames that yt-dlp
+produces and writes proper ID3v1/v2 tags directly into the MP3 files:
+
+  Artist  — the streamer's display name (normalised from their Twitch handle)
+  Album   — "<Artist> on Twitch"
+  Track   — the stream timestamp, used as a unique title
+  Year    — the year the stream took place
+  Comment — a provenance note pointing back to this tool
+
+Filename formats understood:
+
+  ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3
+  YYYY-MM-DD-HH-MM-SS-artisthandle.mp3
+
+Artist handles are normalised automatically: underscores become spaces,
+noise words like "Official", "Music", and "dj" are stripped, and a growing
+table of known Twitch handles maps to the DJ or artist's real display name.
+
+Files are processed concurrently — one child process per file, up to the
+limit set by --jobs — so large collections tag quickly.  Synology NAS index
+directories (@eaDir) are skipped automatically when recursing.
+
 Usage:
 
 	twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]
