@@ -39,7 +39,9 @@ tmpDir=$(mktemp -d)
 rootDir=$(mktemp -d)
 
 function newRIFF {
-	if command -v arecord >/dev/null 2>&1; then
+	if command -v sox >/dev/null 2>&1; then
+		sox -n -r 44100 -c 2 "$tmpDir/source.wav" trim 0.0 2.0
+	elif command -v arecord >/dev/null 2>&1; then
 		arecord -d 2 -f S16_LE -r 44100 "$tmpDir/source.wav"
 	else
 		>&2 'ERROR: 💥 no recognized tools for making RIFF PCM audio files are installed'
