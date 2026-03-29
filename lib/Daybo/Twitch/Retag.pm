@@ -65,6 +65,8 @@ sub run {
 		change_count      => 0,
 		unqualified_bytes => 0,
 		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
 		start_time        => time(),
 		end_time       => 0,
 	});
@@ -139,13 +141,16 @@ sub _collect {
 			}
 		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = getExt($filename);
+			my $size = -s $relPath;
 			$fh->close();
+			$self->_stats->{seen_files}++;
+			$self->_stats->{seen_bytes} += $size;
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [ $relPath, $filename, -s $relPath ]);
+				push(@files, [ $relPath, $filename, $size ]);
 			} else {
-				$self->_stats->{unqualified_bytes} += -s $relPath;
+				$self->_stats->{unqualified_bytes} += $size;
 				$self->_stats->{unqualified_files}++;
 			}
 		}
@@ -571,6 +576,8 @@ sub _printStats {
 				change_count        => $s->{change_count} + 0,
 				unqualified_bytes   => $s->{unqualified_bytes} + 0,
 				unqualified_files   => $s->{unqualified_files} + 0,
+				seen_files          => $s->{seen_files} + 0,
+				seen_bytes          => $s->{seen_bytes} + 0,
 				elapsed_s           => $elapsed + 0,
 				avg_time_per_file_s => $s->{total_files} > 0 ? $elapsed / $s->{total_files} : 0,
 				avg_time_per_mib_s  => $total_mib > 0 ? $elapsed / $total_mib : 0,
@@ -580,6 +587,8 @@ sub _printStats {
 	}
 
 	my $plain = sprintf("Summary:\n");
+	$plain .= sprintf("  Files seen:       %d\n",   $s->{seen_files});
+	$plain .= sprintf("  Bytes seen:       %s\n",   _fmtBytes($s->{seen_bytes}));
 	$plain .= sprintf("  Files processed:  %d\n",   $s->{total_files});
 	$plain .= sprintf("  Files modified:   %d\n",   $s->{modified_files});
 	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
