@@ -282,13 +282,14 @@ sub parseTag {
 }
 
 sub logTagChanges {
-	my ($self, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
+	my ($self, $file, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
 	my (%JSON_changeLog, $plain_changeLog);
 	my $changeCount = 0;
 
 	if ($self->json) {
 		%JSON_changeLog = (
+			file => $file,
 			process => {
 				type => 'changelog',
 				pct => $pct,
@@ -328,7 +329,7 @@ sub logTagChanges {
 		    if ($changeCount == 0);
 		$self->log(\%JSON_changeLog);
 	} else {
-		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forced rewrite', $pct)
+		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forcing rewrite for %s', $pct, $file)
 		    if ($changeCount == 0);
 		$self->log($plain_changeLog);
 	}
@@ -374,7 +375,7 @@ sub tagPerProcess {
 	}
 
 	my $change_count = 0;
-	$change_count = $self->logTagChanges($pct, $existing, $artist, $album, $track, $year, $comment)
+	$change_count = $self->logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
 	my @stat = stat($file)
