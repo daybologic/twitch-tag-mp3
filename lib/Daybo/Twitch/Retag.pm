@@ -115,7 +115,8 @@ sub _collect {
 
 		if (-d $relPath) {
 			if ($self->recursive && acceptableDirName($filename)) {
-				push(@files, $self->_collect($relPath))
+				my $sub = $self->_collect($relPath);
+				push(@files, @{$sub}) if (ref($sub));
 			}
 		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = getExt($filename);
