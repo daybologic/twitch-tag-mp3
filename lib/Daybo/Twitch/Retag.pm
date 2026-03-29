@@ -553,7 +553,7 @@ sub _printStats {
 	my $total_mib = $s->{total_bytes} / (1024 * 1024);
 
 	if ($self->json) {
-		print encode_json({
+		$self->log({
 			process => { type => 'stats' },
 			stats => {
 				total_files         => $s->{total_files} + 0,
@@ -566,22 +566,23 @@ sub _printStats {
 				avg_time_per_file_s => $s->{total_files} > 0 ? $elapsed / $s->{total_files} : 0,
 				avg_time_per_mib_s  => $total_mib > 0 ? $elapsed / $total_mib : 0,
 			},
-		}) . "\n";
+		});
 		return;
 	}
 
-	printf("Summary:\n");
-	printf("  Files processed:  %d\n",   $s->{total_files});
-	printf("  Files modified:   %d\n",   $s->{modified_files});
-	printf("  Files skipped:    %d\n",   $s->{skipped_files});
-	printf("  Total bytes:      %s\n",   _fmtBytes($s->{total_bytes}));
-	printf("  Modified bytes:   %s\n",   _fmtBytes($s->{modified_bytes}));
-	printf("  Tag changes:      %d\n",   $s->{change_count});
-	printf("  Total time:       %.3fs\n", $elapsed);
-	printf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
+	my $plain = sprintf("Summary:\n");
+	$plain .= sprintf("  Files processed:  %d\n",   $s->{total_files});
+	$plain .= sprintf("  Files modified:   %d\n",   $s->{modified_files});
+	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
+	$plain .= sprintf("  Total bytes:      %s\n",   _fmtBytes($s->{total_bytes}));
+	$plain .= sprintf("  Modified bytes:   %s\n",   _fmtBytes($s->{modified_bytes}));
+	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
+	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
+	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
 	    if ($s->{total_files} > 0);
-	printf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
+	$plain .= sprintf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
 	    if ($total_mib > 0);
+	$self->log($plain);
 
 	return;
 }
