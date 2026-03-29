@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper-compat (= 13)
 Build-Depends-Indep: libsys-cpu-perl
-Standards-Version: 4.7.3
+Standards-Version: 4.7.2
 Rules-Requires-Root: no
 Homepage: https://git.sr.ht/~m6kvm/twitch-tag-mp3
 
