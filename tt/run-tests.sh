@@ -59,8 +59,9 @@ while IFS= read -r -d '' script; do
 	elif [ -x "$script" ]; then
 		# Run the script in a subshell, so "exit" doesn’t kill the runner
 		(
-			"$script" >/dev/null 2>&1
-		) < /dev/null # <-- critical fix: prevent script from reading find's output
+			cd "$BASE_DIR"
+			"./${script#$BASE_DIR/}" >/dev/null 2>&1
+		) < /dev/null # <-- critical fix: prevent script from reading find’s output
 		status=$?
 
 		if [[ $status -eq 0 ]]; then
