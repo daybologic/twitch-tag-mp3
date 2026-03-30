@@ -50,7 +50,7 @@ Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
 | `--json` | `-J` | Emit newline-delimited JSON events instead of human-readable text (see below) |
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
-| `--verbose` | `-v` | See verbose progress and tag information |
+| `--verbose` | `-v` | See verbose progress, tag information, and a run summary |
 | `--version` | `-V` | Print the version number and exit |
 
 ## JSON output mode
@@ -100,6 +100,32 @@ Contains a `changes` array listing every field that differs.  If no fields diffe
 `pct` is the progress percentage (0–100) across the whole run; `pid` identifies which child
 process emitted the event, which is useful when `--jobs` is greater than 1 and events from
 multiple workers are interleaved on stdout.
+
+### Event: `stats`
+
+Emitted once at the end of a run (requires `--verbose`).  Summarises the entire run.
+
+```json
+{
+  "process": { "type": "stats" },
+  "stats": {
+    "total_files":          42,
+    "modified_files":       38,
+    "skipped_files":         4,
+    "total_bytes":    1234567890,
+    "modified_bytes": 1100000000,
+    "change_count":        190,
+    "elapsed_s":          45.3,
+    "avg_time_per_file_s": 1.079,
+    "avg_time_per_mib_s":  0.038
+  }
+}
+```
+
+`skipped_files` counts files whose tags were already correct (no write needed).
+`change_count` is the total number of individual tag fields that differed from the existing
+values across all modified files.  Under `--noop`, `modified_files` is always 0 but
+`change_count` still reflects what would have changed.
 
 ## Experimental features
 

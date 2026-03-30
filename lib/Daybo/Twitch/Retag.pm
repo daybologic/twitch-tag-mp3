@@ -36,6 +36,7 @@ use IO::Dir;
 use IO::File;
 use IPC::Run3;
 use JSON::PP qw(encode_json);
+use Time::HiRes qw(time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 
@@ -48,10 +49,27 @@ has jobs => (is => 'ro', isa => 'Int',  default => 1);
 has [qw(force json noop recursive verbose)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
+has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
+
 my @pids;
 
 sub run {
 	my ($self, $dirname) = @_;
+
+	$self->_stats({
+		total_files    => 0,
+		modified_files => 0,
+		skipped_files  => 0,
+		total_bytes    => 0,
+		modified_bytes => 0,
+		change_count      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
+		start_time        => time(),
+		end_time       => 0,
+	});
 
 	$self->log("Walking file tree '$dirname'");
 	my $files = $self->_collect($dirname);
@@ -85,15 +103,18 @@ sub run {
 		$self->tag(
 			$relPath,
 			$pct,
+			$size,
 			@{ parseFileName($filename) },
 		);
 	}
 
-	foreach my $pid (@pids) {
-		waitpid($pid, 0);
+	while (@pids) {
+		my $done = waitpid(-1, 0);
+		$self->_reapChild($done);
 	}
 
-	@pids = ();
+	$self->_stats->{end_time} = time();
+	$self->_printStats();
 
 	return EXIT_SUCCESS;
 }
@@ -120,11 +141,17 @@ sub _collect {
 			}
 		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = getExt($filename);
+			my $size = -s $relPath;
 			$fh->close();
+			$self->_stats->{seen_files}++;
+			$self->_stats->{seen_bytes} += $size;
 
 			if (isMp3($ext)) {
 				parseFileName($filename);
-				push(@files, [ $relPath, $filename, -s $relPath ]);
+				push(@files, [ $relPath, $filename, $size ]);
+			} else {
+				$self->_stats->{unqualified_bytes} += $size;
+				$self->_stats->{unqualified_files}++;
 			}
 		}
 	}
@@ -169,24 +196,60 @@ sub getExt {
 }
 
 sub tag {
-	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
+	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
 		my $done = waitpid(-1, 0);
-		@pids = grep { $_ != $done } @pids;
+		$self->_reapChild($done);
 	}
+
+	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
 
 	my $pid = fork();
 	die("Cannot fork! $ERRNO") unless (defined($pid));
 
 	if ($pid) { # parent
-		push(@pids, $pid);
+		close($wfh);
+		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
+		close($rfh);
 		local $PROGRAM_NAME = sprintf("tagging '%s'", $file);
-		$self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
+		my ($modified, $change_count) = $self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
+		$modified //= 0;
+		$change_count //= 0;
+		print $wfh "$modified $change_count\n";
+		close($wfh);
 		exit(EXIT_SUCCESS);
 	}
 
+	return;
+}
+
+sub _reapChild {
+	my ($self, $done_pid) = @_;
+
+	my ($entry) = grep { $_->{pid} == $done_pid } @pids;
+	if ($entry) {
+		my $line = readline($entry->{rfh});
+		close($entry->{rfh});
+		if (defined($line)) {
+			chomp($line);
+			my ($modified, $change_count) = split(/ /, $line);
+			$modified //= 0;
+			$change_count //= 0;
+			$self->_stats->{total_files}++;
+			$self->_stats->{total_bytes} += $entry->{size};
+			if ($modified) {
+				$self->_stats->{modified_files}++;
+				$self->_stats->{modified_bytes} += $entry->{size};
+			} else {
+				$self->_stats->{skipped_files}++;
+			}
+			$self->_stats->{change_count} += $change_count;
+		}
+	}
+
+	@pids = grep { $_->{pid} != $done_pid } @pids;
 	return;
 }
 
@@ -281,7 +344,7 @@ sub logTagChanges {
 		$self->log($plain_changeLog);
 	}
 
-	return;
+	return $changeCount;
 }
 
 sub tagPerProcess {
@@ -318,10 +381,11 @@ sub tagPerProcess {
 	    && ($existing->{comment} // '') eq $comment
 	) {
 		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
-		return;
+		return (0, 0);
 	}
 
-	$self->logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
+	my $change_count = 0;
+	$change_count = $self->logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
 	my @stat = stat($file)
@@ -329,7 +393,9 @@ sub tagPerProcess {
 
 	my $gid = $stat[5];
 
-	return if ($self->noop);
+	if ($self->noop) {
+		return (0, $change_count);
+	}
 
 	__system('id3v2', '--delete-all', $file);
 	__system(
@@ -345,7 +411,7 @@ sub tagPerProcess {
 	chown(-1, $gid, $file) == 1
 	    or die("Cannot restore GID $gid on '$file': $ERRNO");
 
-	return;
+	return (1, $change_count);
 }
 
 sub __system {
@@ -480,6 +546,65 @@ sub fixConjunctions {
 sub acceptableDirName {
 	my ($dirName) = @_;
 	return ($dirName ne '@eaDir');
+}
+
+sub _fmtBytes {
+	my ($bytes) = @_;
+	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
+	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
+	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
+	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes >= 1024);
+	return sprintf('%d bytes', $bytes);
+}
+
+sub _printStats {
+	my ($self) = @_;
+
+	my $s = $self->_stats;
+	my $elapsed = $s->{end_time} - $s->{start_time};
+	my $total_mib = $s->{total_bytes} / (1024 * 1024);
+
+	if ($self->json) {
+		$self->log({
+			process => { type => 'stats' },
+			stats => {
+				total_files         => $s->{total_files} + 0,
+				modified_files      => $s->{modified_files} + 0,
+				skipped_files       => $s->{skipped_files} + 0,
+				total_bytes         => $s->{total_bytes} + 0,
+				modified_bytes      => $s->{modified_bytes} + 0,
+				change_count        => $s->{change_count} + 0,
+				unqualified_bytes   => $s->{unqualified_bytes} + 0,
+				unqualified_files   => $s->{unqualified_files} + 0,
+				seen_files          => $s->{seen_files} + 0,
+				seen_bytes          => $s->{seen_bytes} + 0,
+				elapsed_s           => $elapsed + 0,
+				avg_time_per_file_s => $s->{total_files} > 0 ? $elapsed / $s->{total_files} : 0,
+				avg_time_per_mib_s  => $total_mib > 0 ? $elapsed / $total_mib : 0,
+			},
+		});
+		return;
+	}
+
+	my $plain = sprintf("Summary:\n");
+	$plain .= sprintf("  Files seen:       %d\n",   $s->{seen_files});
+	$plain .= sprintf("  Bytes seen:       %s\n",   _fmtBytes($s->{seen_bytes}));
+	$plain .= sprintf("  Files processed:  %d\n",   $s->{total_files});
+	$plain .= sprintf("  Files modified:   %d\n",   $s->{modified_files});
+	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
+	$plain .= sprintf("  Total bytes:      %s\n",   _fmtBytes($s->{total_bytes}));
+	$plain .= sprintf("  Modified bytes:   %s\n",   _fmtBytes($s->{modified_bytes}));
+	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
+	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
+	$plain .= sprintf("  Unqualified bytes: %s\n",  _fmtBytes($s->{unqualified_bytes}));
+	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
+	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
+	    if ($s->{total_files} > 0);
+	$plain .= sprintf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
+	    if ($total_mib > 0);
+	$self->log($plain);
+
+	return;
 }
 
 1;
