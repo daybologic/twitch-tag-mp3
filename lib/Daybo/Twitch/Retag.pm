@@ -213,7 +213,7 @@ sub tag {
 		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
 		close($rfh);
-		local $PROGRAM_NAME = sprintf("tagging '%s'", $file);
+		local $PROGRAM_NAME = sprintf("%s: tagging '%s'", $PROGRAM_NAME, $file);
 		my ($modified, $change_count) = $self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
 		$change_count //= 0;
