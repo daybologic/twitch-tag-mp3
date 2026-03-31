@@ -51,10 +51,15 @@ has [qw(force json noop recursive verbose)]
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
+has __originalProgramName => (is => 'rw', isa => 'Str');
+
 my @pids;
 
 sub run {
 	my ($self, $dirname) = @_;
+
+	$self->__originalProgramName($PROGRAM_NAME);
+	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
 
 	$self->_stats({
 		total_files    => 0,
@@ -109,6 +114,7 @@ sub run {
 	}
 
 	while (@pids) {
+		local $PROGRAM_NAME = sprintf('%s: no more files, waitpid', $self->__originalProgramName);
 		my $done = waitpid(-1, 0);
 		$self->_reapChild($done);
 	}
@@ -199,6 +205,7 @@ sub tag {
 	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
+		local $PROGRAM_NAME = sprintf('%s: reached %d limit, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
 		$self->_reapChild($done);
 	}
@@ -213,7 +220,6 @@ sub tag {
 		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
 		close($rfh);
-		local $PROGRAM_NAME = sprintf("%s: tagging '%s'", $PROGRAM_NAME, $file);
 		my ($modified, $change_count) = $self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
 		$change_count //= 0;
@@ -371,7 +377,9 @@ sub tagPerProcess {
 		    $pct, $artist, $album, $track, $year));
 	}
 
+	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
 	my $existing = readTags($file);
+
 	if (!$self->force
 	    && $existing
 	    && ($existing->{artist}  // '') eq $artist
@@ -397,6 +405,7 @@ sub tagPerProcess {
 		return (0, $change_count);
 	}
 
+	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
 	__system('id3v2', '--delete-all', $file);
 	__system(
 		'id3v2',
