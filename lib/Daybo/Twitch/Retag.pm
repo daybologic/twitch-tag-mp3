@@ -393,9 +393,9 @@ sub __reapChild {
 		close($entry->{rfh});
 		if (defined($line)) {
 			chomp($line);
-			my ($modified, $change_count) = split(/ /, $line);
+			my ($modified, $changeCount) = split(/ /, $line);
 			$modified //= 0;
-			$change_count //= 0;
+			$changeCount //= 0;
 			$self->_stats->{total_files}++;
 			$self->_stats->{total_bytes} += $entry->{size};
 			if ($modified) {
@@ -404,7 +404,7 @@ sub __reapChild {
 			} else {
 				$self->_stats->{skipped_files}++;
 			}
-			$self->_stats->{change_count} += $change_count;
+			$self->_stats->{change_count} += $changeCount;
 		}
 	}
 
@@ -446,18 +446,18 @@ sub run {
 	}
 
 	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
-	my ($total_bytes, $done_bytes);
+	my ($totalBytes, $doneBytes);
 	if ($weighted) {
-		$total_bytes += $_->[2] for @$files;
-		$done_bytes = 0;
+		$totalBytes += $_->[2] for @$files;
+		$doneBytes = 0;
 	}
 
 	for (my $i = 0; $i < scalar(@$files); $i++) {
 		my ($relPath, $filename, $size) = @{ $files->[$i] };
 		my $pct;
 		if ($weighted) {
-			$done_bytes += $size;
-			$pct = $total_bytes > 0 ? int($done_bytes / $total_bytes * 100) : 100;
+			$doneBytes += $size;
+			$pct = $totalBytes > 0 ? int($doneBytes / $totalBytes * 100) : 100;
 		} else {
 			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
 		}
@@ -527,10 +527,10 @@ sub __tag {
 		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
 		close($rfh);
-		my ($modified, $change_count) = $self->__tagPerProcess($file, $pct, $artist, $album, $track, $year);
+		my ($modified, $changeCount) = $self->__tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
-		$change_count //= 0;
-		print $wfh "$modified $change_count\n";
+		$changeCount //= 0;
+		print $wfh "$modified $changeCount\n";
 		close($wfh);
 		exit(EXIT_SUCCESS);
 	}
@@ -577,8 +577,8 @@ sub __tagPerProcess {
 		return (0, 0);
 	}
 
-	my $change_count = 0;
-	$change_count = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
+	my $changeCount = 0;
+	$changeCount = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
 	my @stat = stat($file)
@@ -587,7 +587,7 @@ sub __tagPerProcess {
 	my $gid = $stat[5];
 
 	if ($self->noop) {
-		return (0, $change_count);
+		return (0, $changeCount);
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
@@ -605,7 +605,7 @@ sub __tagPerProcess {
 	chown(-1, $gid, $file) == 1
 	    or die("Cannot restore GID $gid on '$file': $ERRNO");
 
-	return (1, $change_count);
+	return (1, $changeCount);
 }
 
 sub usage {
