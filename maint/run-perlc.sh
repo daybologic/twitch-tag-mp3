@@ -32,7 +32,7 @@
 set -eu
 
 for f in "$@"; do
-	perl -c -- "$f"
+	perl -Ilib -c -- "$f"
 done
 
 exit 0

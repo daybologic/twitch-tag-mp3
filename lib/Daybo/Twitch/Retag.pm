@@ -31,14 +31,13 @@
 
 package Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
-use File::Spec;
 use IO::Dir;
 use IO::File;
-use IPC::Run3;
 use JSON::PP qw(encode_json);
 use Time::HiRes qw(time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
+use Daybo::Twitch::TagWrap;
 
 our $VERSION = '0.6.0';
 
@@ -52,6 +51,8 @@ has [qw(force json noop recursive verbose)]
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
 has __originalProgramName => (is => 'rw', isa => 'Str');
+
+has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { Daybo::Twitch::TagWrap->new() });
 
 my @pids;
 
@@ -296,29 +297,6 @@ sub __parseFileName {
 	die("Cannot parse filename structure: '$filename'");
 }
 
-my %__parsers = ( );
-sub __parseTag {
-	my ($tags, $line) = @_;
-
-	if (0 == scalar(keys(%__parsers))) {
-		%__parsers = (
-			artist => qr/^TPE1[^:]+:\s*(.+)$/,
-			album => qr/^TALB[^:]+:\s*(.+)$/,
-			track => qr/^TIT2[^:]+:\s*(.+)$/,
-			year => qr/^TYER[^:]+:\s*(.+)$/,
-			comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
-		);
-	}
-
-	while (my ($fieldName, $rx) = each(%__parsers)) {
-		next if ($line !~ $rx);
-		$tags->{$fieldName} = $1;
-		last;
-	}
-
-	return;
-}
-
 sub __printStats {
 	my ($self) = @_;
 
@@ -367,21 +345,6 @@ sub __printStats {
 	$self->__log($plain);
 
 	return;
-}
-
-sub __readTags {
-	my ($file) = @_;
-
-	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
-
-	my %tags;
-	while (my $line = <$fh>) {
-		chomp($line);
-		__parseTag(\%tags, $line);
-	}
-	$fh->close();
-
-	return %tags ? \%tags : undef;
 }
 
 sub __reapChild {
@@ -482,32 +445,6 @@ sub run {
 	return EXIT_SUCCESS;
 }
 
-sub __system {
-	my (@args) = @_;
-
-	run3(
-		\@args,
-		undef,
-		File::Spec->devnull(),
-		File::Spec->devnull(),
-	);
-
-	my $exitCode = $CHILD_ERROR;
-	if ($exitCode == -1) {
-		die("Failed to run id3v2: $ERRNO");
-	} elsif ($exitCode & 127) {
-		die(sprintf(
-			'id3v2 died with signal %d%s',
-			($exitCode & 127),
-			($exitCode & 128) ? ' (core dumped)' : q{}
-		));
-	} elsif (($exitCode >> 8) != 0) {
-		die(sprintf('id3v2 exited with status %d', $exitCode >> 8));
-	}
-
-	return $exitCode;
-}
-
 sub __tag {
 	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
 
@@ -563,7 +500,7 @@ sub __tagPerProcess {
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
-	my $existing = __readTags($file);
+	my $existing = $self->_tagWrap->readTags($file);
 
 	if (!$self->force
 	    && $existing
@@ -591,16 +528,8 @@ sub __tagPerProcess {
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
-	__system('id3v2', '--delete-all', $file);
-	__system(
-		'id3v2',
-		'--artist', $artist,
-		'--album',  $album,
-		'--song',   $track,
-		'--year',   $year,
-		'--comment', $comment,
-		$file,
-	);
+	$self->_tagWrap->deleteTags($file);
+	$self->_tagWrap->writeTags($file, $artist, $album, $track, $year, $comment);
 
 	chown(-1, $gid, $file) == 1
 	    or die("Cannot restore GID $gid on '$file': $ERRNO");
