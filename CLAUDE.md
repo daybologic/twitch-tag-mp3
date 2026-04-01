@@ -27,10 +27,10 @@ dpkg-buildpackage -b
 **Single module:** `lib/Daybo/Twitch/Retag.pm` (Moose-based) contains all logic:
 
 - `run($dirname)` — recursively walks directories, skips `@eaDir`, forks a child for each MP3 found.
-- `tag(...)` — forks a child process; parent collects PIDs, child calls `tagPerProcess` then exits.
-- `tagPerProcess(...)` — strips existing ID3v1/v2, writes new tags via the `id3v2` command-line utility.
-- `parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track (filename sans `.mp3`/suffixes), and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
-- `acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
+- `__tag(...)` — forks a child process; parent collects PIDs, child calls `__tagPerProcess` then exits.
+- `__tagPerProcess(...)` — strips existing ID3v1/v2, writes new tags via the `id3v2` command-line utility.
+- `__parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track (filename sans `.mp3`/suffixes), and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
+- `__acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
 
 ## Coding Style
 
@@ -40,6 +40,10 @@ All `sub` definitions must use cuddled braces — opening brace on the same line
 sub foo {   # correct
 sub foo{    # wrong
 ```
+
+Subroutines prefixed with `__` are private (internal to the module). Subroutines without that prefix (`run`, `usage`) are public and form the API called from `bin/twitch-tag-mp3`.
+
+All subroutines must be in lexical (case-insensitive alphabetical) order, ignoring the `__` prefix when determining position. This applies to new subs and any time existing subs are renamed.
 
 ## Code Quality Rules
 
