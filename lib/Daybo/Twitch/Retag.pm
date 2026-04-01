@@ -512,7 +512,7 @@ sub __tag {
 	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
-		local $PROGRAM_NAME = sprintf('%s: reached %d limit, waitpid', $self->__originalProgramName, $self->jobs);
+		local $PROGRAM_NAME = sprintf('%s: reached %d concurrent jobs, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
 		$self->__reapChild($done);
 	}
