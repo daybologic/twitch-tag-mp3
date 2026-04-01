@@ -76,15 +76,15 @@ sub run {
 		end_time       => 0,
 	});
 
-	$self->log("Walking file tree '$dirname'");
-	my $files = $self->_collect($dirname);
+	$self->__log("Walking file tree '$dirname'");
+	my $files = $self->__collect($dirname);
 	if (!ref($files) && $files == -1) {
 		return EXIT_FAILURE;
 	}
 
 	my $total = scalar(@$files);
 	if ($total == 0) {
-		$self->log('Nothing to do!');
+		$self->__log('Nothing to do!');
 		return EXIT_SUCCESS;
 	}
 
@@ -104,34 +104,34 @@ sub run {
 		} else {
 			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
 		}
-		$self->log("Tagging $relPath");
-		$self->tag(
+		$self->__log("Tagging $relPath");
+		$self->__tag(
 			$relPath,
 			$pct,
 			$size,
-			@{ parseFileName($filename) },
+			@{ __parseFileName($filename) },
 		);
 	}
 
 	while (@pids) {
 		local $PROGRAM_NAME = sprintf('%s: no more files, waitpid', $self->__originalProgramName);
 		my $done = waitpid(-1, 0);
-		$self->_reapChild($done);
+		$self->__reapChild($done);
 	}
 
 	$self->_stats->{end_time} = time();
-	$self->_printStats();
+	$self->__printStats();
 
 	return EXIT_SUCCESS;
 }
 
-sub _collect {
+sub __collect {
 	my ($self, $dirname) = @_;
 	my @files;
 
 	my $dir = IO::Dir->new($dirname);
 	unless ($dir) {
-		$self->log("Cannot open '$dirname': $ERRNO");
+		$self->__log("Cannot open '$dirname': $ERRNO");
 		return -1;
 	}
 
@@ -141,19 +141,19 @@ sub _collect {
 		my $relPath = $dirname . '/' . $filename;
 
 		if (-d $relPath) {
-			if ($self->recursive && acceptableDirName($filename)) {
-				my $sub = $self->_collect($relPath);
+			if ($self->recursive && __acceptableDirName($filename)) {
+				my $sub = $self->__collect($relPath);
 				push(@files, @{$sub}) if (ref($sub));
 			}
 		} elsif (my $fh = IO::File->new($relPath, '<')) {
-			my $ext = getExt($filename);
+			my $ext = __getExt($filename);
 			my $size = -s $relPath;
 			$fh->close();
 			$self->_stats->{seen_files}++;
 			$self->_stats->{seen_bytes} += $size;
 
-			if (isMp3($ext)) {
-				parseFileName($filename);
+			if (__isMp3($ext)) {
+				__parseFileName($filename);
 				push(@files, [ $relPath, $filename, $size ]);
 			} else {
 				$self->_stats->{unqualified_bytes} += $size;
@@ -166,7 +166,7 @@ sub _collect {
 	return \@files;
 }
 
-sub log { ## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub __log {
 	my ($self, $msg) = @_;
 	if ($self->verbose) {
 		if (ref($msg) eq 'HASH') {
@@ -188,12 +188,12 @@ sub usage {
 	return 1;
 }
 
-sub isMp3 {
+sub __isMp3 {
 	my ($ext) = @_;
 	return (defined($ext) && lc($ext) eq 'mp3');
 }
 
-sub getExt {
+sub __getExt {
 	my ($fn) = @_;
 	my @arr = split(m/\./, $fn);
 	my $ext = $arr[ scalar(@arr) - 1 ];
@@ -201,13 +201,13 @@ sub getExt {
 	return $ext;
 }
 
-sub tag {
+sub __tag {
 	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
 
 	if (scalar(@pids) >= $self->jobs) {
 		local $PROGRAM_NAME = sprintf('%s: reached %d limit, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
-		$self->_reapChild($done);
+		$self->__reapChild($done);
 	}
 
 	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
@@ -220,7 +220,7 @@ sub tag {
 		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
 		close($rfh);
-		my ($modified, $change_count) = $self->tagPerProcess($file, $pct, $artist, $album, $track, $year);
+		my ($modified, $change_count) = $self->__tagPerProcess($file, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
 		$change_count //= 0;
 		print $wfh "$modified $change_count\n";
@@ -231,7 +231,7 @@ sub tag {
 	return;
 }
 
-sub _reapChild {
+sub __reapChild {
 	my ($self, $done_pid) = @_;
 
 	my ($entry) = grep { $_->{pid} == $done_pid } @pids;
@@ -259,7 +259,7 @@ sub _reapChild {
 	return;
 }
 
-sub readTags {
+sub __readTags {
 	my ($file) = @_;
 
 	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
@@ -267,7 +267,7 @@ sub readTags {
 	my %tags;
 	while (my $line = <$fh>) {
 		chomp($line);
-		parseTag(\%tags, $line);
+		__parseTag(\%tags, $line);
 	}
 	$fh->close();
 
@@ -275,7 +275,7 @@ sub readTags {
 }
 
 my %__parsers = ( );
-sub parseTag {
+sub __parseTag {
 	my ($tags, $line) = @_;
 
 	if (0 == scalar(keys(%__parsers))) {
@@ -297,7 +297,7 @@ sub parseTag {
 	return;
 }
 
-sub logTagChanges {
+sub __logTagChanges {
 	my ($self, $file, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
 	my (%JSON_changeLog, $plain_changeLog);
@@ -343,22 +343,22 @@ sub logTagChanges {
 	if ($self->json) {
 		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
 		    if ($changeCount == 0);
-		$self->log(\%JSON_changeLog);
+		$self->__log(\%JSON_changeLog);
 	} else {
 		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forcing rewrite for %s', $pct, $file)
 		    if ($changeCount == 0);
-		$self->log($plain_changeLog);
+		$self->__log($plain_changeLog);
 	}
 
 	return $changeCount;
 }
 
-sub tagPerProcess {
+sub __tagPerProcess {
 	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
 	my $comment = "Generated by $URL";
 
 	if ($self->json) {
-		$self->log({
+		$self->__log({
 			process => {
 				type => 'tag',
 				pct => $pct,
@@ -373,12 +373,12 @@ sub tagPerProcess {
 			},
 		});
 	} else {
-		$self->log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
+		$self->__log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
 		    $pct, $artist, $album, $track, $year));
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
-	my $existing = readTags($file);
+	my $existing = __readTags($file);
 
 	if (!$self->force
 	    && $existing
@@ -388,12 +388,12 @@ sub tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
+		$self->__log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
 		return (0, 0);
 	}
 
 	my $change_count = 0;
-	$change_count = $self->logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
+	$change_count = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
 	    if ($existing);
 
 	my @stat = stat($file)
@@ -449,7 +449,7 @@ sub __system {
 	return $exitCode;
 }
 
-sub _normalizeArtist {
+sub __normalizeArtist {
 	my ($artistRaw) = @_;
 	my $artist = $artistRaw;
 
@@ -470,9 +470,9 @@ sub _normalizeArtist {
 		$artist = join(' ', map { ucfirst(lc($_)) } @words);
 	}
 
-	$artist = fixWorldSuffix($artist);
+	$artist = __fixWorldSuffix($artist);
 	$artist =~ s/\b([a-z])/uc($1)/ge;
-	$artist = fixConjunctions($artist);
+	$artist = __fixConjunctions($artist);
 
 	$artist = 'DJ Chopper' if ($artistRaw eq 'djChopper');
 	$artist = 'DJ DNA' if ($artist eq 'Dna');
@@ -502,7 +502,7 @@ sub _normalizeArtist {
 }
 
 my %__filenameParserContext = ( );
-sub parseFileName {
+sub __parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	# Example: '2022-05-30-15-20-01-vlastimilvibes.mp3'
 	my ($filename) = @_;
@@ -515,7 +515,7 @@ sub parseFileName {
 		my ($date, $year, $hh, $mm) = ($2, $3, $4 // '00', $5 // '00');
 		my $streamId = $6 // $7;
 		my $artistRaw = $1;
-		my $artist = _normalizeArtist($artistRaw);
+		my $artist = __normalizeArtist($artistRaw);
 
 		my $track = "$artist $date ${hh}:${mm}:00";
 		$track .= " $streamId" if (defined($streamId));
@@ -525,7 +525,7 @@ sub parseFileName {
 	} elsif ($filename =~ m/^(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\w+)\.\w+$/) {
 		my ($year, $mon, $day, $hh, $mm, $ss, $artistRaw) = ($1, $2, $3, $4, $5, $6, $7);
 		my $date = "$year-$mon-$day";
-		my $artist = _normalizeArtist($artistRaw);
+		my $artist = __normalizeArtist($artistRaw);
 		my $track = "$artist $date ${hh}:${mm}:${ss}";
 		my $album = "${artist} on Twitch";
 
@@ -535,14 +535,14 @@ sub parseFileName {
 	die("Cannot parse filename structure: '$filename'");
 }
 
-sub fixWorldSuffix {
+sub __fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
 	$artist =~ s/ Uk$/ UK/i;
 	return $artist;
 }
 
-sub fixConjunctions {
+sub __fixConjunctions {
 	my ($artist) = @_;
 	my @words = split(/\s+/, $artist);
 	return $artist if (@words <= 2);
@@ -552,12 +552,12 @@ sub fixConjunctions {
 	return join(' ', @words);
 }
 
-sub acceptableDirName {
+sub __acceptableDirName {
 	my ($dirName) = @_;
 	return ($dirName ne '@eaDir');
 }
 
-sub _fmtBytes {
+sub __fmtBytes {
 	my ($bytes) = @_;
 	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
 	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
@@ -566,7 +566,7 @@ sub _fmtBytes {
 	return sprintf('%d bytes', $bytes);
 }
 
-sub _printStats {
+sub __printStats {
 	my ($self) = @_;
 
 	my $s = $self->_stats;
@@ -574,7 +574,7 @@ sub _printStats {
 	my $total_mib = $s->{total_bytes} / (1024 * 1024);
 
 	if ($self->json) {
-		$self->log({
+		$self->__log({
 			process => { type => 'stats' },
 			stats => {
 				total_files         => $s->{total_files} + 0,
@@ -597,21 +597,21 @@ sub _printStats {
 
 	my $plain = sprintf("Summary:\n");
 	$plain .= sprintf("  Files seen:       %d\n",   $s->{seen_files});
-	$plain .= sprintf("  Bytes seen:       %s\n",   _fmtBytes($s->{seen_bytes}));
+	$plain .= sprintf("  Bytes seen:       %s\n",   __fmtBytes($s->{seen_bytes}));
 	$plain .= sprintf("  Files processed:  %d\n",   $s->{total_files});
 	$plain .= sprintf("  Files modified:   %d\n",   $s->{modified_files});
 	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
-	$plain .= sprintf("  Total bytes:      %s\n",   _fmtBytes($s->{total_bytes}));
-	$plain .= sprintf("  Modified bytes:   %s\n",   _fmtBytes($s->{modified_bytes}));
+	$plain .= sprintf("  Total bytes:      %s\n",   __fmtBytes($s->{total_bytes}));
+	$plain .= sprintf("  Modified bytes:   %s\n",   __fmtBytes($s->{modified_bytes}));
 	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
 	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
-	$plain .= sprintf("  Unqualified bytes: %s\n",  _fmtBytes($s->{unqualified_bytes}));
+	$plain .= sprintf("  Unqualified bytes: %s\n",  __fmtBytes($s->{unqualified_bytes}));
 	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
 	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
 	    if ($s->{total_files} > 0);
 	$plain .= sprintf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
 	    if ($total_mib > 0);
-	$self->log($plain);
+	$self->__log($plain);
 
 	return;
 }
