@@ -55,74 +55,9 @@ has __originalProgramName => (is => 'rw', isa => 'Str');
 
 my @pids;
 
-sub run {
-	my ($self, $dirname) = @_;
-
-	$self->__originalProgramName($PROGRAM_NAME);
-	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
-
-	$self->_stats({
-		total_files    => 0,
-		modified_files => 0,
-		skipped_files  => 0,
-		total_bytes    => 0,
-		modified_bytes => 0,
-		change_count      => 0,
-		unqualified_bytes => 0,
-		unqualified_files => 0,
-		seen_files        => 0,
-		seen_bytes        => 0,
-		start_time        => time(),
-		end_time       => 0,
-	});
-
-	$self->__log("Walking file tree '$dirname'");
-	my $files = $self->__collect($dirname);
-	if (!ref($files) && $files == -1) {
-		return EXIT_FAILURE;
-	}
-
-	my $total = scalar(@$files);
-	if ($total == 0) {
-		$self->__log('Nothing to do!');
-		return EXIT_SUCCESS;
-	}
-
-	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
-	my ($total_bytes, $done_bytes);
-	if ($weighted) {
-		$total_bytes += $_->[2] for @$files;
-		$done_bytes = 0;
-	}
-
-	for (my $i = 0; $i < scalar(@$files); $i++) {
-		my ($relPath, $filename, $size) = @{ $files->[$i] };
-		my $pct;
-		if ($weighted) {
-			$done_bytes += $size;
-			$pct = $total_bytes > 0 ? int($done_bytes / $total_bytes * 100) : 100;
-		} else {
-			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
-		}
-		$self->__log("Tagging $relPath");
-		$self->__tag(
-			$relPath,
-			$pct,
-			$size,
-			@{ __parseFileName($filename) },
-		);
-	}
-
-	while (@pids) {
-		local $PROGRAM_NAME = sprintf('%s: no more files, waitpid', $self->__originalProgramName);
-		my $done = waitpid(-1, 0);
-		$self->__reapChild($done);
-	}
-
-	$self->_stats->{end_time} = time();
-	$self->__printStats();
-
-	return EXIT_SUCCESS;
+sub __acceptableDirName {
+	my ($dirName) = @_;
+	return ($dirName ne '@eaDir');
 }
 
 sub __collect {
@@ -166,6 +101,45 @@ sub __collect {
 	return \@files;
 }
 
+sub __fixConjunctions {
+	my ($artist) = @_;
+	my @words = split(/\s+/, $artist);
+	return $artist if (@words <= 2);
+	foreach my $i (1 .. $#words - 1) {
+		$words[$i] = lc($words[$i]) if ($words[$i] =~ /^(?:on|and|or)$/i);
+	}
+	return join(' ', @words);
+}
+
+sub __fixWorldSuffix {
+	my ($artist) = @_;
+	$artist =~ s/(\S)(world)$/$1 $2/i;
+	$artist =~ s/ Uk$/ UK/i;
+	return $artist;
+}
+
+sub __fmtBytes {
+	my ($bytes) = @_;
+	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
+	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
+	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
+	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes >= 1024);
+	return sprintf('%d bytes', $bytes);
+}
+
+sub __getExt {
+	my ($fn) = @_;
+	my @arr = split(m/\./, $fn);
+	my $ext = $arr[ scalar(@arr) - 1 ];
+	return if ($fn eq $ext);
+	return $ext;
+}
+
+sub __isMp3 {
+	my ($ext) = @_;
+	return (defined($ext) && lc($ext) eq 'mp3');
+}
+
 sub __log {
 	my ($self, $msg) = @_;
 	if ($self->verbose) {
@@ -177,123 +151,6 @@ sub __log {
 			print "$msg\n";
 		}
 	}
-	return;
-}
-
-sub usage {
-	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
-	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
-	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
-	printf("See https://%s for more information.\n", $URL);
-	return 1;
-}
-
-sub __isMp3 {
-	my ($ext) = @_;
-	return (defined($ext) && lc($ext) eq 'mp3');
-}
-
-sub __getExt {
-	my ($fn) = @_;
-	my @arr = split(m/\./, $fn);
-	my $ext = $arr[ scalar(@arr) - 1 ];
-	return if ($fn eq $ext);
-	return $ext;
-}
-
-sub __tag {
-	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
-
-	if (scalar(@pids) >= $self->jobs) {
-		local $PROGRAM_NAME = sprintf('%s: reached %d limit, waitpid', $self->__originalProgramName, $self->jobs);
-		my $done = waitpid(-1, 0);
-		$self->__reapChild($done);
-	}
-
-	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
-
-	my $pid = fork();
-	die("Cannot fork! $ERRNO") unless (defined($pid));
-
-	if ($pid) { # parent
-		close($wfh);
-		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
-	} else { # child
-		close($rfh);
-		my ($modified, $change_count) = $self->__tagPerProcess($file, $pct, $artist, $album, $track, $year);
-		$modified //= 0;
-		$change_count //= 0;
-		print $wfh "$modified $change_count\n";
-		close($wfh);
-		exit(EXIT_SUCCESS);
-	}
-
-	return;
-}
-
-sub __reapChild {
-	my ($self, $done_pid) = @_;
-
-	my ($entry) = grep { $_->{pid} == $done_pid } @pids;
-	if ($entry) {
-		my $line = readline($entry->{rfh});
-		close($entry->{rfh});
-		if (defined($line)) {
-			chomp($line);
-			my ($modified, $change_count) = split(/ /, $line);
-			$modified //= 0;
-			$change_count //= 0;
-			$self->_stats->{total_files}++;
-			$self->_stats->{total_bytes} += $entry->{size};
-			if ($modified) {
-				$self->_stats->{modified_files}++;
-				$self->_stats->{modified_bytes} += $entry->{size};
-			} else {
-				$self->_stats->{skipped_files}++;
-			}
-			$self->_stats->{change_count} += $change_count;
-		}
-	}
-
-	@pids = grep { $_->{pid} != $done_pid } @pids;
-	return;
-}
-
-sub __readTags {
-	my ($file) = @_;
-
-	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
-
-	my %tags;
-	while (my $line = <$fh>) {
-		chomp($line);
-		__parseTag(\%tags, $line);
-	}
-	$fh->close();
-
-	return %tags ? \%tags : undef;
-}
-
-my %__parsers = ( );
-sub __parseTag {
-	my ($tags, $line) = @_;
-
-	if (0 == scalar(keys(%__parsers))) {
-		%__parsers = (
-			artist => qr/^TPE1[^:]+:\s*(.+)$/,
-			album => qr/^TALB[^:]+:\s*(.+)$/,
-			track => qr/^TIT2[^:]+:\s*(.+)$/,
-			year => qr/^TYER[^:]+:\s*(.+)$/,
-			comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
-		);
-	}
-
-	while (my ($fieldName, $rx) = each(%__parsers)) {
-		next if ($line !~ $rx);
-		$tags->{$fieldName} = $1;
-		last;
-	}
-
 	return;
 }
 
@@ -351,102 +208,6 @@ sub __logTagChanges {
 	}
 
 	return $changeCount;
-}
-
-sub __tagPerProcess {
-	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
-	my $comment = "Generated by $URL";
-
-	if ($self->json) {
-		$self->__log({
-			process => {
-				type => 'tag',
-				pct => $pct,
-				pid => $PID,
-			},
-			fields => {
-				artist => $artist,
-				album => $album,
-				track => $track,
-				year => $year,
-				comment => $comment,
-			},
-		});
-	} else {
-		$self->__log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
-		    $pct, $artist, $album, $track, $year));
-	}
-
-	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
-	my $existing = __readTags($file);
-
-	if (!$self->force
-	    && $existing
-	    && ($existing->{artist}  // '') eq $artist
-	    && ($existing->{album}   // '') eq $album
-	    && ($existing->{track}   // '') eq $track
-	    && ($existing->{year}    // '') eq $year
-	    && ($existing->{comment} // '') eq $comment
-	) {
-		$self->__log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
-		return (0, 0);
-	}
-
-	my $change_count = 0;
-	$change_count = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
-	    if ($existing);
-
-	my @stat = stat($file)
-	    or die("Cannot stat '$file': $ERRNO");
-
-	my $gid = $stat[5];
-
-	if ($self->noop) {
-		return (0, $change_count);
-	}
-
-	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
-	__system('id3v2', '--delete-all', $file);
-	__system(
-		'id3v2',
-		'--artist', $artist,
-		'--album',  $album,
-		'--song',   $track,
-		'--year',   $year,
-		'--comment', $comment,
-		$file,
-	);
-
-	chown(-1, $gid, $file) == 1
-	    or die("Cannot restore GID $gid on '$file': $ERRNO");
-
-	return (1, $change_count);
-}
-
-sub __system {
-	my (@args) = @_;
-
-	run3(
-		\@args,
-		undef,
-		File::Spec->devnull(),
-		File::Spec->devnull(),
-	);
-
-	my $exitCode = $CHILD_ERROR;
-	if ($exitCode == -1) {
-		die("Failed to run id3v2: $ERRNO");
-	} elsif ($exitCode & 127) {
-		die(sprintf(
-			'id3v2 died with signal %d%s',
-			($exitCode & 127),
-			($exitCode & 128) ? ' (core dumped)' : q{}
-		));
-	} elsif (($exitCode >> 8) != 0) {
-		die(sprintf('id3v2 exited with status %d', $exitCode >> 8));
-	}
-
-	return $exitCode;
 }
 
 sub __normalizeArtist {
@@ -535,35 +296,27 @@ sub __parseFileName {
 	die("Cannot parse filename structure: '$filename'");
 }
 
-sub __fixWorldSuffix {
-	my ($artist) = @_;
-	$artist =~ s/(\S)(world)$/$1 $2/i;
-	$artist =~ s/ Uk$/ UK/i;
-	return $artist;
-}
+my %__parsers = ( );
+sub __parseTag {
+	my ($tags, $line) = @_;
 
-sub __fixConjunctions {
-	my ($artist) = @_;
-	my @words = split(/\s+/, $artist);
-	return $artist if (@words <= 2);
-	foreach my $i (1 .. $#words - 1) {
-		$words[$i] = lc($words[$i]) if ($words[$i] =~ /^(?:on|and|or)$/i);
+	if (0 == scalar(keys(%__parsers))) {
+		%__parsers = (
+			artist => qr/^TPE1[^:]+:\s*(.+)$/,
+			album => qr/^TALB[^:]+:\s*(.+)$/,
+			track => qr/^TIT2[^:]+:\s*(.+)$/,
+			year => qr/^TYER[^:]+:\s*(.+)$/,
+			comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
+		);
 	}
-	return join(' ', @words);
-}
 
-sub __acceptableDirName {
-	my ($dirName) = @_;
-	return ($dirName ne '@eaDir');
-}
+	while (my ($fieldName, $rx) = each(%__parsers)) {
+		next if ($line !~ $rx);
+		$tags->{$fieldName} = $1;
+		last;
+	}
 
-sub __fmtBytes {
-	my ($bytes) = @_;
-	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
-	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
-	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
-	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes >= 1024);
-	return sprintf('%d bytes', $bytes);
+	return;
 }
 
 sub __printStats {
@@ -614,6 +367,253 @@ sub __printStats {
 	$self->__log($plain);
 
 	return;
+}
+
+sub __readTags {
+	my ($file) = @_;
+
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+
+	my %tags;
+	while (my $line = <$fh>) {
+		chomp($line);
+		__parseTag(\%tags, $line);
+	}
+	$fh->close();
+
+	return %tags ? \%tags : undef;
+}
+
+sub __reapChild {
+	my ($self, $done_pid) = @_;
+
+	my ($entry) = grep { $_->{pid} == $done_pid } @pids;
+	if ($entry) {
+		my $line = readline($entry->{rfh});
+		close($entry->{rfh});
+		if (defined($line)) {
+			chomp($line);
+			my ($modified, $change_count) = split(/ /, $line);
+			$modified //= 0;
+			$change_count //= 0;
+			$self->_stats->{total_files}++;
+			$self->_stats->{total_bytes} += $entry->{size};
+			if ($modified) {
+				$self->_stats->{modified_files}++;
+				$self->_stats->{modified_bytes} += $entry->{size};
+			} else {
+				$self->_stats->{skipped_files}++;
+			}
+			$self->_stats->{change_count} += $change_count;
+		}
+	}
+
+	@pids = grep { $_->{pid} != $done_pid } @pids;
+	return;
+}
+
+sub run {
+	my ($self, $dirname) = @_;
+
+	$self->__originalProgramName($PROGRAM_NAME);
+	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
+
+	$self->_stats({
+		total_files    => 0,
+		modified_files => 0,
+		skipped_files  => 0,
+		total_bytes    => 0,
+		modified_bytes => 0,
+		change_count      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
+		start_time        => time(),
+		end_time       => 0,
+	});
+
+	$self->__log("Walking file tree '$dirname'");
+	my $files = $self->__collect($dirname);
+	if (!ref($files) && $files == -1) {
+		return EXIT_FAILURE;
+	}
+
+	my $total = scalar(@$files);
+	if ($total == 0) {
+		$self->__log('Nothing to do!');
+		return EXIT_SUCCESS;
+	}
+
+	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
+	my ($total_bytes, $done_bytes);
+	if ($weighted) {
+		$total_bytes += $_->[2] for @$files;
+		$done_bytes = 0;
+	}
+
+	for (my $i = 0; $i < scalar(@$files); $i++) {
+		my ($relPath, $filename, $size) = @{ $files->[$i] };
+		my $pct;
+		if ($weighted) {
+			$done_bytes += $size;
+			$pct = $total_bytes > 0 ? int($done_bytes / $total_bytes * 100) : 100;
+		} else {
+			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+		}
+		$self->__log("Tagging $relPath");
+		$self->__tag(
+			$relPath,
+			$pct,
+			$size,
+			@{ __parseFileName($filename) },
+		);
+	}
+
+	while (@pids) {
+		local $PROGRAM_NAME = sprintf('%s: no more files, waitpid', $self->__originalProgramName);
+		my $done = waitpid(-1, 0);
+		$self->__reapChild($done);
+	}
+
+	$self->_stats->{end_time} = time();
+	$self->__printStats();
+
+	return EXIT_SUCCESS;
+}
+
+sub __system {
+	my (@args) = @_;
+
+	run3(
+		\@args,
+		undef,
+		File::Spec->devnull(),
+		File::Spec->devnull(),
+	);
+
+	my $exitCode = $CHILD_ERROR;
+	if ($exitCode == -1) {
+		die("Failed to run id3v2: $ERRNO");
+	} elsif ($exitCode & 127) {
+		die(sprintf(
+			'id3v2 died with signal %d%s',
+			($exitCode & 127),
+			($exitCode & 128) ? ' (core dumped)' : q{}
+		));
+	} elsif (($exitCode >> 8) != 0) {
+		die(sprintf('id3v2 exited with status %d', $exitCode >> 8));
+	}
+
+	return $exitCode;
+}
+
+sub __tag {
+	my ($self, $file, $pct, $size, $artist, $album, $track, $year) = @_;
+
+	if (scalar(@pids) >= $self->jobs) {
+		local $PROGRAM_NAME = sprintf('%s: reached %d limit, waitpid', $self->__originalProgramName, $self->jobs);
+		my $done = waitpid(-1, 0);
+		$self->__reapChild($done);
+	}
+
+	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
+
+	my $pid = fork();
+	die("Cannot fork! $ERRNO") unless (defined($pid));
+
+	if ($pid) { # parent
+		close($wfh);
+		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
+	} else { # child
+		close($rfh);
+		my ($modified, $change_count) = $self->__tagPerProcess($file, $pct, $artist, $album, $track, $year);
+		$modified //= 0;
+		$change_count //= 0;
+		print $wfh "$modified $change_count\n";
+		close($wfh);
+		exit(EXIT_SUCCESS);
+	}
+
+	return;
+}
+
+sub __tagPerProcess {
+	my ($self, $file, $pct, $artist, $album, $track, $year) = @_;
+	my $comment = "Generated by $URL";
+
+	if ($self->json) {
+		$self->__log({
+			process => {
+				type => 'tag',
+				pct => $pct,
+				pid => $PID,
+			},
+			fields => {
+				artist => $artist,
+				album => $album,
+				track => $track,
+				year => $year,
+				comment => $comment,
+			},
+		});
+	} else {
+		$self->__log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
+		    $pct, $artist, $album, $track, $year));
+	}
+
+	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
+	my $existing = __readTags($file);
+
+	if (!$self->force
+	    && $existing
+	    && ($existing->{artist}  // '') eq $artist
+	    && ($existing->{album}   // '') eq $album
+	    && ($existing->{track}   // '') eq $track
+	    && ($existing->{year}    // '') eq $year
+	    && ($existing->{comment} // '') eq $comment
+	) {
+		$self->__log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
+		return (0, 0);
+	}
+
+	my $change_count = 0;
+	$change_count = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
+	    if ($existing);
+
+	my @stat = stat($file)
+	    or die("Cannot stat '$file': $ERRNO");
+
+	my $gid = $stat[5];
+
+	if ($self->noop) {
+		return (0, $change_count);
+	}
+
+	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
+	__system('id3v2', '--delete-all', $file);
+	__system(
+		'id3v2',
+		'--artist', $artist,
+		'--album',  $album,
+		'--song',   $track,
+		'--year',   $year,
+		'--comment', $comment,
+		$file,
+	);
+
+	chown(-1, $gid, $file) == 1
+	    or die("Cannot restore GID $gid on '$file': $ERRNO");
+
+	return (1, $change_count);
+}
+
+sub usage {
+	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
+	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
+	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
+	printf("See https://%s for more information.\n", $URL);
+	return 1;
 }
 
 1;
