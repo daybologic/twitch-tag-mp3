@@ -64,7 +64,7 @@ sub getBackendForExt {
 sub __initBackends {
 	my ($self) = @_;
 	my %backends;
- 	my $pattern = 'lib/Daybo/Twitch/TagWrap/Backend/*.pm';
+	my $pattern = File::Spec->catfile(File::Spec->rel2abs(dirname(__FILE__)), 'Backend', '*.pm');
 
 	while (my $pm = glob($pattern)) {
 		my ($module, @patterns);
