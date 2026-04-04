@@ -53,11 +53,10 @@ sub list {
 sub getBackendForExt {
 	my ($self, $ext) = @_;
 
-	$ext = uc($ext);
 	my $module = $self->__backends->{ uc($ext) };
 
-	die("Cannot find module which deals with extension '$ext': " . Dumper $self->__backend)
-		unless ($module);
+	die("Cannot find module which deals with extension '$ext': " . Dumper $self->__backends)
+	    unless ($module);
 
 	return $module;
 }
