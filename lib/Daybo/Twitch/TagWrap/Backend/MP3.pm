@@ -28,36 +28,74 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Daybo::Twitch::TagWrap;
-use Data::Dumper;
-use Daybo::Twitch::TagWrap::Backend;
-use English qw(-no_match_vars);
-use File::Spec;
+package Daybo::Twitch::TagWrap::Backend::MP3;
 use Moose;
 
-has __backend => (
-	lazy => 1,
-	isa => 'Daybo::Twitch::TagWrap::Backend',
-	is => 'ro',
-	default => sub {
-		return Daybo::Twitch::TagWrap::Backend->new();
-	},
-);
+extends 'Daybo::Twitch::TagWrap::Backend';
 
-sub getBackendForExt {
-	my ($self, $ext) = @_;
+use English qw(-no_match_vars);
+use File::Spec;
 
-	return $self->__backend->getBackendForExt($ext);
+sub readTags {
+	my ($self, $file) = @_;
+
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+
+	my %tags;
+	while (my $line = <$fh>) {
+		chomp($line);
+		__parseTag(\%tags, $line);
+	}
+	$fh->close();
+
+	return %tags ? \%tags : undef;
 }
 
-sub isExtSupported {
-	my ($self, $ext) = @_;
+sub deleteTags {
+	my ($self, $file) = @_;
+	$self->_system('id3v2', '--delete-all', $file);
+	return;
+}
 
-	foreach my $backendName (@{ $self->__backend->list() }) {
-		return 1 if ($backendName eq uc($ext));
+sub writeTags {
+	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+	$self->_system(
+		'id3v2',
+		'--artist', $artist,
+		'--album',  $album,
+		'--song',   $track,
+		'--year',   $year,
+		'--comment', $comment,
+		$file,
+	);
+	return;
+}
+
+my %__parsers = ( );
+sub __parseTag {
+	my ($tags, $line) = @_;
+
+	__initParsers() if (0 == scalar(keys(%__parsers)));
+
+	while (my ($fieldName, $rx) = each(%__parsers)) {
+		next if ($line !~ $rx);
+		$tags->{$fieldName} = $1;
+		last;
 	}
 
-	return 0;
+	return;
+}
+
+sub __initParsers {
+	%__parsers = (
+		artist => qr/^TPE1[^:]+:\s*(.+)$/,
+		album => qr/^TALB[^:]+:\s*(.+)$/,
+		track => qr/^TIT2[^:]+:\s*(.+)$/,
+		year => qr/^TYER[^:]+:\s*(.+)$/,
+		comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
+	);
+
+	return;
 }
 
 1;

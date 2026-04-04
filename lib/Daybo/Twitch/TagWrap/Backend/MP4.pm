@@ -28,36 +28,88 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Daybo::Twitch::TagWrap;
-use Data::Dumper;
-use Daybo::Twitch::TagWrap::Backend;
-use English qw(-no_match_vars);
-use File::Spec;
+package Daybo::Twitch::TagWrap::Backend::MP4;
 use Moose;
 
-has __backend => (
-	lazy => 1,
-	isa => 'Daybo::Twitch::TagWrap::Backend',
-	is => 'ro',
-	default => sub {
-		return Daybo::Twitch::TagWrap::Backend->new();
-	},
-);
+extends 'Daybo::Twitch::TagWrap::Backend';
 
-sub getBackendForExt {
-	my ($self, $ext) = @_;
+use Data::Dumper;
+use English qw(-no_match_vars);
+use File::Basename qw(dirname);
+use File::Copy qw(move);
+use File::Spec;
+use File::Temp qw(tempfile);
+use JSON::PP qw(decode_json);
 
-	return $self->__backend->getBackendForExt($ext);
-}
+sub readTags {
+	my ($self, $file) = @_;
 
-sub isExtSupported {
-	my ($self, $ext) = @_;
-
-	foreach my $backendName (@{ $self->__backend->list() }) {
-		return 1 if ($backendName eq uc($ext));
+	my $json;
+	{
+		my @cmd = ('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', $file);
+		open(my $fh, '-|', @cmd) or return;
+		local $INPUT_RECORD_SEPARATOR = undef;
+		$json = <$fh>;
+		close($fh) or die("close failed: $ERRNO");
 	}
 
-	return 0;
+	my $data = decode_json($json);
+	my $tags = $data->{format}{tags} || {};
+
+	if ($tags->{date}) {
+		$tags->{year} = delete($tags->{date});
+	}
+
+	if ($tags->{title}) {
+		$tags->{track} = delete($tags->{title});
+	}
+
+	return ($tags && scalar(keys(%$tags)) > 0) ? $tags : undef;
+}
+
+sub deleteTags {
+	# no-op
+}
+
+sub writeTags {
+	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+
+	my $dir = dirname($file);
+
+	# Create temp file in same directory
+	my ($fh, $temp) = tempfile(
+		'.twitch-tag-ffmpeg.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+		SUFFIX => '.mp4.tmp',
+		DIR    => $dir,
+		UNLINK => 0,   # we’ll manage cleanup
+	);
+	close($fh);
+
+	my $exitCode = $self->_system('ffmpeg',
+		'-nostdin',
+		'-y',
+		'-i', $file,
+		'-c', 'copy',
+		'-movflags', '+faststart',
+		'-f', 'mp4',
+		'-metadata', "artist=$artist",
+		'-metadata', "album=$album",
+		'-metadata', "date=$year",
+		'-metadata', "title=$track",
+		'-metadata', "comment=$comment",
+		$temp,
+	);
+
+	if ($exitCode != 0) {
+		unlink($temp);
+		die("ffmpeg failed for '$file'");
+	}
+
+	# Atomic replace
+	move($temp, $file)
+	    or die("Failed to move '$temp' to '$file': $ERRNO");
+
+	return;
 }
 
 1;

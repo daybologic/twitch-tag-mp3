@@ -28,36 +28,85 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Daybo::Twitch::TagWrap;
-use Data::Dumper;
-use Daybo::Twitch::TagWrap::Backend;
-use English qw(-no_match_vars);
-use File::Spec;
+package Daybo::Twitch::TagWrap::Backend;
 use Moose;
+use Data::Dumper;
+use English qw(-no_match_vars);
+use File::Basename;
+use IPC::Run3;
+use UNIVERSAL::require;
 
-has __backend => (
-	lazy => 1,
-	isa => 'Daybo::Twitch::TagWrap::Backend',
-	is => 'ro',
-	default => sub {
-		return Daybo::Twitch::TagWrap::Backend->new();
-	},
+has __backends   => (
+	is       => 'ro',
+	isa      => 'HashRef',
+	lazy     => 1,
+	required => 0,
+	init_arg => undef,
+	builder  => '__initBackends',
 );
+
+sub list {
+	my ($self) = @_;
+	return [ sort(keys(%{ $self->__backends })) ];
+}
 
 sub getBackendForExt {
 	my ($self, $ext) = @_;
 
-	return $self->__backend->getBackendForExt($ext);
+	$ext = uc($ext);
+	my $module = $self->__backends->{ uc($ext) };
+
+	die("Cannot find module which deals with extension '$ext': " . Dumper $self->__backend)
+		unless ($module);
+
+	return $module;
 }
 
-sub isExtSupported {
-	my ($self, $ext) = @_;
+sub __initBackends {
+	my ($self) = @_;
+	my %backends;
+ 	my $pattern = 'lib/Daybo/Twitch/TagWrap/Backend/*.pm';
 
-	foreach my $backendName (@{ $self->__backend->list() }) {
-		return 1 if ($backendName eq uc($ext));
+	while (my $pm = glob($pattern)) {
+		my ($module, @patterns);
+		$pm = basename($pm);
+		$pm =~ s/\.pm$//;
+		$module = sprintf('Daybo::Twitch::TagWrap::Backend::%s', $pm);
+		unless ($module->use) {
+			warn('Could not import package: ' . $@);
+			next;
+		}
+		$module = $module->new(owner => $self);
+		$backends{$pm} = $module;
+	}
+	return \%backends;
+}
+
+sub _system {
+	my ($self, @args) = @_;
+
+	run3(
+		\@args,
+		undef,
+		File::Spec->devnull(),
+		File::Spec->devnull(),
+	);
+
+	my $exitCode = $CHILD_ERROR;
+	if ($exitCode == -1) {
+		die("Failed to run $args[0]: $ERRNO");
+	} elsif ($exitCode & 127) {
+		die(sprintf(
+			'%s died with signal %d%s',
+			$args[0],
+			($exitCode & 127),
+			($exitCode & 128) ? ' (core dumped)' : q{}
+		));
+	} elsif (($exitCode >> 8) != 0) {
+		die(sprintf('%s exited with status %d', $args[0], $exitCode >> 8));
 	}
 
-	return 0;
+	return $exitCode;
 }
 
 1;
