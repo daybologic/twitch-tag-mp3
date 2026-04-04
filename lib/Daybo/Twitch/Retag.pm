@@ -30,7 +30,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 package Daybo::Twitch::Retag;
-use Data::Dumper;
 use English qw(-no_match_vars);
 use IO::Dir;
 use IO::File;

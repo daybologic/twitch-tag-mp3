@@ -33,11 +33,9 @@ use Moose;
 
 extends 'Daybo::Twitch::TagWrap::Backend';
 
-use Data::Dumper;
 use English qw(-no_match_vars);
 use File::Basename qw(dirname);
 use File::Copy qw(move);
-use File::Spec;
 use File::Temp qw(tempfile);
 use JSON::PP qw(decode_json);
 

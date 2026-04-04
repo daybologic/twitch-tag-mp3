@@ -29,10 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 package Daybo::Twitch::TagWrap;
-use Data::Dumper;
 use Daybo::Twitch::TagWrap::Backend;
-use English qw(-no_match_vars);
-use File::Spec;
 use Moose;
 
 has __backend => (
