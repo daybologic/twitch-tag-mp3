@@ -39,7 +39,7 @@ use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
 
-our $VERSION = '0.6.0';
+our $VERSION = '0.7.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-mp3';
 
