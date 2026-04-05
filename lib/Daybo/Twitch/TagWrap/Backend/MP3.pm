@@ -117,6 +117,14 @@ sub writeTags {
 	return;
 }
 
+=item C<__parseTag($tags, $line)>
+
+Given a hash ref C<$tags> and a single line of C<id3v2 -l> output,
+attempts to match the line against each known field parser and, on a
+match, populates C<$tags> with the extracted value.  No return value.
+
+=cut
+
 my %__parsers = ( );
 sub __parseTag {
 	my ($tags, $line) = @_;
@@ -131,6 +139,14 @@ sub __parseTag {
 
 	return;
 }
+
+=item C<__initParsers()>
+
+Populates C<%__parsers> with the per-field regular expressions used by
+C<__parseTag>.  Called lazily the first time C<__parseTag> is invoked.
+No return value.
+
+=cut
 
 sub __initParsers {
 	%__parsers = (
