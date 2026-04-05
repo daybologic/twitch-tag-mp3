@@ -1,6 +1,18 @@
 twitch-tag-mp3 (0.7.0) stable; urgency=low
 
-  * 
+  * Add MP4 tagging support via ffprobe and ffmpeg.
+  * Extract id3v2 calls into new Daybo::Twitch::TagWrap module.
+  * Add summary stats (file count, byte totals) printed at end of run;
+    gated on --verbose.
+  * Add TiB support to byte formatting; check largest unit first.
+  * Show original program name in child process titles.
+  * Include filename in log message when a forced tag rewrite occurs (#47).
+  * Fix: die with a proper error if a directory cannot be opened during
+    collection (#42).
+  * Fix: backend glob now uses an absolute path derived from __FILE__.
+  * Fix: dereference _collect return value in recursive call.
+  * Add libuniversal-require-perl Debian dependency.
+  * Add functional test suite (t/functional/).
 
  -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Sun, 05 Apr 2026 12:26:14 +0100
 
