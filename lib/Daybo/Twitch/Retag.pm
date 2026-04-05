@@ -56,10 +56,27 @@ has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { D
 
 my @pids;
 
+=item C<__acceptableDirName($dirName)>
+
+Returns true unless C<$dirName> is C<@eaDir> (a Synology metadata
+directory that should never be walked).
+
+=cut
+
 sub __acceptableDirName {
 	my ($dirName) = @_;
 	return ($dirName ne '@eaDir');
 }
+
+=item C<__collect($dirname)>
+
+Recursively walks C<$dirname>, returning an array ref of tuples
+C<[$relPath, $filename, $size, $ext]> for every file whose extension is
+supported by the tag backend.  Updates C<_stats> with C<seen_files>,
+C<seen_bytes>, C<unqualified_files>, and C<unqualified_bytes> as it goes.
+Returns C<-1> (not a ref) if the directory cannot be opened.
+
+=cut
 
 sub __collect {
 	my ($self, $dirname) = @_;
@@ -102,6 +119,14 @@ sub __collect {
 	return \@files;
 }
 
+=item C<__fixConjunctions($artist)>
+
+Lowercases C<on>, C<and>, and C<or> when they appear as interior words
+(not first or last) in C<$artist>.  Returns the artist string unchanged
+if it contains two words or less.
+
+=cut
+
 sub __fixConjunctions {
 	my ($artist) = @_;
 	my @words = split(/\s+/, $artist);
@@ -112,12 +137,27 @@ sub __fixConjunctions {
 	return join(' ', @words);
 }
 
+=item C<__fixWorldSuffix($artist)>
+
+Ensures a trailing C<world> token is separated from the preceding word by
+a space, and normalizes a trailing C< Uk> suffix to C< UK>.
+
+=cut
+
 sub __fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
 	$artist =~ s/ Uk$/ UK/i;
 	return $artist;
 }
+
+=item C<__fmtBytes($bytes)>
+
+Formats a byte count as a human-readable string with the appropriate
+binary unit (TiB, GiB, MiB, KiB, or bytes).  Checks from largest to
+smallest unit.
+
+=cut
 
 sub __fmtBytes {
 	my ($bytes) = @_;
@@ -128,6 +168,13 @@ sub __fmtBytes {
 	return sprintf('%d bytes', $bytes);
 }
 
+=item C<__getExt($fn)>
+
+Returns the lower-case file extension of C<$fn> (the part after the last
+C<.>), or an empty string if the filename has no extension.
+
+=cut
+
 sub __getExt {
 	my ($fn) = @_;
 	my @arr = split(m/\./, $fn);
@@ -135,6 +182,15 @@ sub __getExt {
 	return '' if ($fn eq $ext);
 	return lc($ext);
 }
+
+=item C<__log($msg)>
+
+Prints C<$msg> to stdout when C<--verbose> is active.  If C<$msg> is a
+hash ref it is emitted as JSON regardless of the C<--json> flag; a plain
+string is wrapped in a JSON object when C<--json> is set.  No return
+value.
+
+=cut
 
 sub __log {
 	my ($self, $msg) = @_;
@@ -149,6 +205,14 @@ sub __log {
 	}
 	return;
 }
+
+=item C<__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)>
+
+Compares each proposed tag field against C<$existing> and logs the
+differences (or a "Tags unchanged, forced rewrite" message when nothing
+changed).  Returns the number of fields that differ.
+
+=cut
 
 sub __logTagChanges {
 	my ($self, $file, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
@@ -206,6 +270,17 @@ sub __logTagChanges {
 	return $changeCount;
 }
 
+=item C<__normalizeArtist($artistRaw)>
+
+Converts a raw yt-dlp artist handle into a display name.  Strips
+C<Official>, C<Music>, and C<dj> tokens; replaces underscores with
+spaces; splits camelCase runs into words; applies title-case; fixes
+conjunctions via L<__fixConjunctions> and world-suffix via
+L<__fixWorldSuffix>; and applies a table of hardcoded handle-to-name
+overrides.
+
+=cut
+
 sub __normalizeArtist {
 	my ($artistRaw) = @_;
 	my $artist = $artistRaw;
@@ -258,6 +333,32 @@ sub __normalizeArtist {
 	return $artist;
 }
 
+=item C<__parseFileName($filename)>
+
+Parses a yt-dlp-style filename and returns a four-element array ref
+C<[$artist, $album, $track, $year]>.  Results are memoized by filename.
+Three filename formats are recognised:
+
+=over
+
+=item *
+
+C<ArtistHandle (type) YYYY-MM-DD HH_MM[-StreamID].mp3>
+
+=item *
+
+C<YYYY-MM-DD-HH-MM-SS-ArtistHandle.ext>
+
+=item *
+
+C<ArtistHandle-YYYY-MM-DD.ext>
+
+=back
+
+Dies if none of the patterns match.
+
+=cut
+
 my %__filenameParserContext = ( );
 sub __parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
@@ -299,6 +400,14 @@ sub __parseFileName {
 
 	die("Cannot parse filename structure: '$filename'");
 }
+
+=item C<__printStats()>
+
+Emits a run summary via C<__log> after all files have been processed.
+In JSON mode, outputs a single C<stats> event object; otherwise prints a
+human-readable multi-line summary.  No return value.
+
+=cut
 
 sub __printStats {
 	my ($self) = @_;
@@ -350,6 +459,14 @@ sub __printStats {
 	return;
 }
 
+=item C<__reapChild($done_pid)>
+
+Reads the result line written by a finished child process, updates
+C<_stats> with its file and byte totals, then removes its entry from
+C<@pids>.  No return value.
+
+=cut
+
 sub __reapChild {
 	my ($self, $done_pid) = @_;
 
@@ -377,6 +494,15 @@ sub __reapChild {
 	@pids = grep { $_->{pid} != $done_pid } @pids;
 	return;
 }
+
+=item C<run($dirname)>
+
+Public entry point.  Initializes stats, walks C<$dirname> via
+C<__collect>, dispatches each qualifying file to C<__tag>, waits for all
+child processes to finish, then prints the run summary.  Returns
+C<EXIT_SUCCESS> or C<EXIT_FAILURE>.
+
+=cut
 
 sub run {
 	my ($self, $dirname) = @_;
@@ -449,6 +575,15 @@ sub run {
 	return EXIT_SUCCESS;
 }
 
+=item C<__tag($file, $pct, $size, $ext, $artist, $album, $track, $year)>
+
+Enforces the C<--jobs> concurrency limit (blocking on C<waitpid> if
+needed), then forks a child.  The parent records the child's PID and pipe
+handle; the child calls C<__tagPerProcess>, writes its result to the
+pipe, and exits.  No return value.
+
+=cut
+
 sub __tag {
 	my ($self, $file, $pct, $size, $ext, $artist, $album, $track, $year) = @_;
 
@@ -478,6 +613,15 @@ sub __tag {
 
 	return;
 }
+
+=item C<__tagPerProcess($file, $ext, $pct, $artist, $album, $track, $year)>
+
+Runs inside a forked child.  Reads existing tags, skips the file if all
+fields are already up to date (unless C<--force>), otherwise deletes and
+rewrites tags via the appropriate backend and restores the original GID.
+Returns a two-element list C<($modified, $changeCount)>.
+
+=cut
 
 sub __tagPerProcess {
 	my ($self, $file, $ext, $pct, $artist, $album, $track, $year) = @_;
@@ -541,6 +685,12 @@ sub __tagPerProcess {
 
 	return (1, $changeCount);
 }
+
+=item C<usage()>
+
+Prints a usage summary to stdout and returns 1.
+
+=cut
 
 sub usage {
 	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
