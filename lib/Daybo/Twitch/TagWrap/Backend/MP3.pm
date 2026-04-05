@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,74 +28,74 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
+package Daybo::Twitch::TagWrap::Backend::MP3;
+use Moose;
 
-eval {
-	import Sys::CPU;
-};
+extends 'Daybo::Twitch::TagWrap::Backend';
 
-use ExtUtils::MakeMaker;
+use English qw(-no_match_vars);
+use File::Spec;
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+sub readTags {
+	my ($self, $file) = @_;
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
+	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
 
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Moose'              => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
-);
-
-package MY;
-use strict;
-use warnings;
-
-sub test {
-	my $inherited = shift;
-
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
+	my %tags;
+	while (my $line = <$fh>) {
+		chomp($line);
+		__parseTag(\%tags, $line);
 	}
+	$fh->close();
 
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+	return %tags ? \%tags : undef;
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+sub deleteTags {
+	my ($self, $file) = @_;
+	$self->_system('id3v2', '--delete-all', $file);
+	return;
+}
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
+sub writeTags {
+	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+	$self->_system(
+		'id3v2',
+		'--artist', $artist,
+		'--album',  $album,
+		'--song',   $track,
+		'--year',   $year,
+		'--comment', $comment,
+		$file,
+	);
+	return;
+}
 
-check :: pure_all
-	@tt/run-tests.sh
+my %__parsers = ( );
+sub __parseTag {
+	my ($tags, $line) = @_;
 
-clean :: 
-	rm -rf cover_db
+	__initParsers() if (0 == scalar(keys(%__parsers)));
 
-# Extend test target
-test :: check
+	while (my ($fieldName, $rx) = each(%__parsers)) {
+		next if ($line !~ $rx);
+		$tags->{$fieldName} = $1;
+		last;
+	}
 
-    ~;
+	return;
+}
+
+sub __initParsers {
+	%__parsers = (
+		artist => qr/^TPE1[^:]+:\s*(.+)$/,
+		album => qr/^TALB[^:]+:\s*(.+)$/,
+		track => qr/^TIT2[^:]+:\s*(.+)$/,
+		year => qr/^TYER[^:]+:\s*(.+)$/,
+		comment => qr/^COMM[^:]+:\s*(?:\([^)]*\)\[[^\]]*\]:\s*)?(.+)$/,
+	);
+
+	return;
 }
 
 1;
