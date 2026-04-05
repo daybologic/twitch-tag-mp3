@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,74 +28,84 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
+package Daybo::Twitch::TagWrap::Backend;
+use Moose;
+use Data::Dumper;
+use English qw(-no_match_vars);
+use File::Basename;
+use IPC::Run3;
+use UNIVERSAL::require;
 
-eval {
-	import Sys::CPU;
-};
-
-use ExtUtils::MakeMaker;
-
-WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
-
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
-
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Moose'              => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
+has __backends   => (
+	is       => 'ro',
+	isa      => 'HashRef',
+	lazy     => 1,
+	required => 0,
+	init_arg => undef,
+	builder  => '__initBackends',
 );
 
-package MY;
-use strict;
-use warnings;
-
-sub test {
-	my $inherited = shift;
-
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
-
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+sub list {
+	my ($self) = @_;
+	return [ sort(keys(%{ $self->__backends })) ];
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+sub getBackendForExt {
+	my ($self, $ext) = @_;
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
+	my $module = $self->__backends->{ uc($ext) };
 
-check :: pure_all
-	@tt/run-tests.sh
+	die("Cannot find module which deals with extension '$ext': " . Dumper $self->__backends)
+	    unless ($module);
 
-clean :: 
-	rm -rf cover_db
+	return $module;
+}
 
-# Extend test target
-test :: check
+sub __initBackends {
+	my ($self) = @_;
+	my %backends;
+	my $pattern = File::Spec->catfile(File::Spec->rel2abs(dirname(__FILE__)), 'Backend', '*.pm');
 
-    ~;
+	while (my $pm = glob($pattern)) {
+		my ($module, @patterns);
+		$pm = basename($pm);
+		$pm =~ s/\.pm$//;
+		$module = sprintf('Daybo::Twitch::TagWrap::Backend::%s', $pm);
+		unless ($module->use) {
+			warn('Could not import package: ' . $@);
+			next;
+		}
+		$module = $module->new(owner => $self);
+		$backends{$pm} = $module;
+	}
+	return \%backends;
+}
+
+sub _system {
+	my ($self, @args) = @_;
+
+	run3(
+		\@args,
+		undef,
+		File::Spec->devnull(),
+		File::Spec->devnull(),
+	);
+
+	my $exitCode = $CHILD_ERROR;
+	if ($exitCode == -1) {
+		die("Failed to run $args[0]: $ERRNO");
+	} elsif ($exitCode & 127) {
+		die(sprintf(
+			'%s died with signal %d%s',
+			$args[0],
+			($exitCode & 127),
+			($exitCode & 128) ? ' (core dumped)' : q{}
+		));
+	} elsif (($exitCode >> 8) != 0) {
+		die(sprintf('%s exited with status %d', $args[0], $exitCode >> 8));
+	}
+
+	return $exitCode;
 }
 
 1;

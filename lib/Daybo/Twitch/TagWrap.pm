@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 # Twitch MP3 tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
@@ -29,74 +28,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
+package Daybo::Twitch::TagWrap;
+use Daybo::Twitch::TagWrap::Backend;
+use Moose;
 
-eval {
-	import Sys::CPU;
-};
-
-use ExtUtils::MakeMaker;
-
-WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
-
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
-
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Moose'              => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
+has __backend => (
+	lazy => 1,
+	isa => 'Daybo::Twitch::TagWrap::Backend',
+	is => 'ro',
+	default => sub {
+		return Daybo::Twitch::TagWrap::Backend->new();
 	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
 );
 
-package MY;
-use strict;
-use warnings;
+sub getBackendForExt {
+	my ($self, $ext) = @_;
 
-sub test {
-	my $inherited = shift;
-
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
-
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+	return $self->__backend->getBackendForExt($ext);
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+sub isExtSupported {
+	my ($self, $ext) = @_;
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
+	foreach my $backendName (@{ $self->__backend->list() }) {
+		return 1 if ($backendName eq uc($ext));
+	}
 
-check :: pure_all
-	@tt/run-tests.sh
-
-clean :: 
-	rm -rf cover_db
-
-# Extend test target
-test :: check
-
-    ~;
+	return 0;
 }
 
 1;

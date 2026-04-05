@@ -8,6 +8,7 @@ Build-Depends-Indep: libsys-cpu-perl,
  lame,
  libipc-run3-perl,
  libmoose-perl,
+ libuniversal-require-perl,
  sox
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
