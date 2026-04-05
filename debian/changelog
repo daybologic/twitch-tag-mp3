@@ -1,3 +1,9 @@
+twitch-tag-mp3 (0.7.0) stable; urgency=low
+
+  * 
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Sun, 05 Apr 2026 12:26:14 +0100
+
 twitch-tag-mp3 (0.6.0) trixie; urgency=medium
 
   * Add --help/-h flag to print usage information and exit.
