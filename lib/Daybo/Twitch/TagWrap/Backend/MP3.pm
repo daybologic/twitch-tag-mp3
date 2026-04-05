@@ -36,6 +36,38 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 use English qw(-no_match_vars);
 use File::Spec;
 
+=item C<readTags($file)>
+
+Given C<$file>, we will run C<id3v2> over it and collect the tags.
+We might return C<undef>.  There may be no tags.  Only recognized tags are
+returned.  These are the tags:
+
+=over
+
+=item *
+
+artist
+
+=item *
+
+album
+
+=item *
+
+track
+
+=item *
+
+year
+
+=item *
+
+comment
+
+=back
+
+=cut
+
 sub readTags {
 	my ($self, $file) = @_;
 
@@ -51,11 +83,25 @@ sub readTags {
 	return %tags ? \%tags : undef;
 }
 
+=item C<deleteTags($file)>
+
+Call this method to remove all of the ID3 tags in an MP3 file.
+There is no return value.
+
+=cut
+
 sub deleteTags {
 	my ($self, $file) = @_;
 	$self->_system('id3v2', '--delete-all', $file);
 	return;
 }
+
+=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
+
+Write the ID3 tags to the given filename.
+No return value.
+
+=cut
 
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
@@ -71,6 +117,14 @@ sub writeTags {
 	return;
 }
 
+=item C<__parseTag($tags, $line)>
+
+Given a hash ref C<$tags> and a single line of C<id3v2 -l> output,
+attempts to match the line against each known field parser and, on a
+match, populates C<$tags> with the extracted value.  No return value.
+
+=cut
+
 my %__parsers = ( );
 sub __parseTag {
 	my ($tags, $line) = @_;
@@ -85,6 +139,14 @@ sub __parseTag {
 
 	return;
 }
+
+=item C<__initParsers()>
+
+Populates C<%__parsers> with the per-field regular expressions used by
+C<__parseTag>.  Called lazily the first time C<__parseTag> is invoked.
+No return value.
+
+=cut
 
 sub __initParsers {
 	%__parsers = (

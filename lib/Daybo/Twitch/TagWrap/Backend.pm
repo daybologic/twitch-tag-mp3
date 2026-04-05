@@ -45,10 +45,25 @@ has __backends   => (
 	builder  => '__initBackends',
 );
 
+=item C<list()>
+
+Returns an array ref of all known backend extension names (upper-case),
+sorted lexically.
+
+=cut
+
 sub list {
 	my ($self) = @_;
 	return [ sort(keys(%{ $self->__backends })) ];
 }
+
+=item C<getBackendForExt($ext)>
+
+Returns the backend object responsible for handling files with extension
+C<$ext> (case-insensitive).  Dies if no backend is registered for that
+extension.
+
+=cut
 
 sub getBackendForExt {
 	my ($self, $ext) = @_;
@@ -60,6 +75,15 @@ sub getBackendForExt {
 
 	return $module;
 }
+
+=item C<__initBackends()>
+
+Lazy builder for the C<__backends> attribute.  Globs for C<*.pm> files
+under the C<Backend/> directory alongside this module, loads each one via
+C<UNIVERSAL::require>, instantiates it, and returns a hash ref keyed by
+upper-case extension name (e.g. C<MP3>, C<MP4>).
+
+=cut
 
 sub __initBackends {
 	my ($self) = @_;
@@ -80,6 +104,15 @@ sub __initBackends {
 	}
 	return \%backends;
 }
+
+=item C<_system(@args)>
+
+Runs an external command via L<IPC::Run3>, discarding stdout and stderr.
+Dies if the command could not be executed, was killed by a signal, or
+exited with a non-zero status.  Returns the raw C<$CHILD_ERROR> value on
+success.
+
+=cut
 
 sub _system {
 	my ($self, @args) = @_;

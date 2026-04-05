@@ -41,11 +41,25 @@ has __backend => (
 	},
 );
 
+=item C<getBackendForExt($ext)>
+
+Delegates to L<Daybo::Twitch::TagWrap::Backend/getBackendForExt> and
+returns the backend object for the given file extension.
+
+=cut
+
 sub getBackendForExt {
 	my ($self, $ext) = @_;
 
 	return $self->__backend->getBackendForExt($ext);
 }
+
+=item C<isExtSupported($ext)>
+
+Returns true if a backend exists for the given file extension
+(case-insensitive), false otherwise.
+
+=cut
 
 sub isExtSupported {
 	my ($self, $ext) = @_;

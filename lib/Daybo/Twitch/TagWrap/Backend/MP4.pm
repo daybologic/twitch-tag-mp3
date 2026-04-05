@@ -39,6 +39,14 @@ use File::Copy qw(move);
 use File::Temp qw(tempfile);
 use JSON::PP qw(decode_json);
 
+=item C<readTags($file)>
+
+Given C<$file>, runs C<ffprobe> over it and returns the tags as a hash ref,
+or C<undef> if no tags are present.  The C<date> key is normalised to
+C<year> and C<title> to C<track> to match the common tag interface.
+
+=cut
+
 sub readTags {
 	my ($self, $file) = @_;
 
@@ -65,9 +73,25 @@ sub readTags {
 	return ($tags && scalar(keys(%$tags)) > 0) ? $tags : undef;
 }
 
+=item C<deleteTags($file)>
+
+No-op for MP4 files; tag removal is handled implicitly by C<writeTags>
+via C<ffmpeg>'s metadata overwrite behaviour.
+
+=cut
+
 sub deleteTags {
 	# no-op
 }
+
+=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
+
+Write metadata tags to the given MP4 file using C<ffmpeg>.  A temporary
+file is created in the same directory as C<$file> and atomically moved
+over it on success.  Dies if C<ffmpeg> exits non-zero or the move fails.
+No return value.
+
+=cut
 
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;

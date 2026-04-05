@@ -49,6 +49,15 @@ use Getopt::Long qw(:config no_ignore_case);
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use lib './lib';
 
+=item C<main()>
+
+Parses command-line options via L<Getopt::Long>, constructs a
+L<Daybo::Twitch::Retag> instance, and dispatches to C<--version>,
+C<--help>, or C<run>.  Returns an exit code suitable for passing to
+C<exit>.
+
+=cut
+
 sub main {
 	my $startDir;
 	my $force = 0;
