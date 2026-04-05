@@ -36,6 +36,38 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 use English qw(-no_match_vars);
 use File::Spec;
 
+=item C<readTags($file)>
+
+Given C<$file>, we will run C<id3v2> over it and collect the tags.
+We might return C<undef>.  There may be no tags.  Only recognized tags are
+returned.  These are the tags:
+
+=over
+
+=item *
+
+artist
+
+=item *
+
+album
+
+=item *
+
+track
+
+=item *
+
+year
+
+=item *
+
+comment
+
+=back
+
+=cut
+
 sub readTags {
 	my ($self, $file) = @_;
 
@@ -51,11 +83,25 @@ sub readTags {
 	return %tags ? \%tags : undef;
 }
 
+=item C<deleteTags($file)>
+
+Call this method to remove all of the ID3 tags in an MP3 file.
+There is no return value.
+
+=cut
+
 sub deleteTags {
 	my ($self, $file) = @_;
 	$self->_system('id3v2', '--delete-all', $file);
 	return;
 }
+
+=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
+
+Write the ID3 tags to the given filename.
+No return value.
+
+=cut
 
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
